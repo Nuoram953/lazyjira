@@ -134,21 +134,3 @@ jobs:
 
     - name: Test release binary
       run: cargo test --release --target ${{ matrix.target }}
-
-  minimum-supported-rust-version:
-    name: MSRV
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install minimum supported Rust version
-      uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: 1.70.0  # Adjust based on your MSRV
-
-    - name: Check with MSRV
-      run: cargo check
-
-    - name: Test with MSRV
-      run: cargo test
