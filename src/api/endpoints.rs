@@ -36,6 +36,20 @@ impl JiraEndpoints {
         )
     }
 
+    pub fn issue_transitions(&self, issue_key: &str) -> String {
+        format!(
+            "{}/rest/api/2/issue/{}/transitions",
+            self.base_url, issue_key
+        )
+    }
+
+    pub fn transition_issue(&self, issue_key: &str) -> String {
+        format!(
+            "{}/rest/api/2/issue/{}/transitions",
+            self.base_url, issue_key
+        )
+    }
+
     #[allow(dead_code)]
     pub fn board_list(&self) -> String {
         format!("{}/rest/agile/1.0/board", self.base_url)

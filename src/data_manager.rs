@@ -150,6 +150,17 @@ impl DataManager {
         self.client.get_issue(issue_key).await
     }
 
+    pub async fn get_issue_transitions(
+        &self,
+        issue_key: &str,
+    ) -> ApiResult<Vec<crate::api::types::JiraTransition>> {
+        self.client.get_issue_transitions(issue_key).await
+    }
+
+    pub async fn transition_issue(&self, issue_key: &str, transition_id: &str) -> ApiResult<()> {
+        self.client.transition_issue(issue_key, transition_id).await
+    }
+
     pub async fn start_auto_refresh(&self) -> ApiResult<()> {
         if let Some(interval) = self.config.auto_refresh_interval {
             let data_manager = self.clone();

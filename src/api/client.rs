@@ -199,6 +199,61 @@ impl JiraClient {
         self.get_issues_by_board_id(board_id).await
     }
 
+    pub async fn get_issue_transitions(&self, issue_key: &str) -> ApiResult<Vec<JiraTransition>> {
+        let url = self.endpoints.issue_transitions(issue_key);
+        let query: Option<&JiraQuery> = None;
+        let response = self.make_request(&url, query).await?;
+
+        let transitions_response: JiraTransitionsResponse = serde_json::from_value(response)
+            .map_err(|e| ApiError::Parse(format!("Failed to parse transitions response: {}", e)))?;
+
+        log::debug!(
+            "Found {} transitions for issue {}",
+            transitions_response.transitions.len(),
+            issue_key
+        );
+        for transition in &transitions_response.transitions {
+            log::trace!("  - {} -> {}", transition.name, transition.to.name);
+        }
+
+        Ok(transitions_response.transitions)
+    }
+
+    pub async fn transition_issue(&self, issue_key: &str, transition_id: &str) -> ApiResult<()> {
+        let url = self.endpoints.transition_issue(issue_key);
+
+        let request_body = JiraTransitionRequest {
+            transition: JiraTransitionRequestTransition {
+                id: transition_id.to_string(),
+            },
+        };
+
+        let response = self
+            .client
+            .post(&url)
+            .header("Authorization", &self.auth_header)
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .json(&request_body)
+            .send()
+            .await
+            .map_err(|e| ApiError::Network(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(ApiError::Http {
+                status: response.status().as_u16(),
+                message: response.text().await.unwrap_or_default(),
+            });
+        }
+
+        log::info!(
+            "Successfully transitioned issue {} with transition {}",
+            issue_key,
+            transition_id
+        );
+        Ok(())
+    }
+
     async fn make_request<T>(&self, url: &str, query: Option<&T>) -> ApiResult<Value>
     where
         T: Serialize,
