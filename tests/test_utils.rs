@@ -1,10 +1,12 @@
 use ratatui::{backend::TestBackend, Terminal};
 
+#[allow(dead_code)]
 pub fn create_test_terminal() -> Terminal<TestBackend> {
     let backend = TestBackend::new(80, 24);
     Terminal::new(backend).unwrap()
 }
 
+#[allow(dead_code)]
 pub fn create_test_terminal_with_size(width: u16, height: u16) -> Terminal<TestBackend> {
     let backend = TestBackend::new(width, height);
     Terminal::new(backend).unwrap()

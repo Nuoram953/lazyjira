@@ -142,9 +142,19 @@ impl App {
 
     async fn refresh_data(&mut self) {
         if let Some(data_manager) = &self.data_manager {
+            let selected_issue_key = self
+                .data
+                .selected_issue
+                .as_ref()
+                .map(|issue| issue.key.clone());
+
             match data_manager.refresh_all_data().await {
                 Ok(_) => {
                     self.data = data_manager.get_data().await;
+
+                    if let Some(key) = selected_issue_key {
+                        self.restore_selected_issue_by_key(&key);
+                    }
                 }
                 Err(e) => {
                     log::error!("Error refreshing data: {}", e);
@@ -296,6 +306,32 @@ impl App {
             FocusedPane::Detail => {}
         }
     }
+
+    fn restore_selected_issue_by_key(&mut self, key: &str) {
+        if let Some(sprint) = &self.data.current_sprint {
+            if let Some(issue) = sprint.issues.iter().find(|issue| issue.key == key) {
+                self.data.selected_issue = Some(issue.clone());
+                return;
+            }
+        }
+
+        if let Some(issue) = self.data.board_issues.iter().find(|issue| issue.key == key) {
+            self.data.selected_issue = Some(issue.clone());
+            return;
+        }
+
+        if let Some(issue) = self
+            .data
+            .last_updated_issues
+            .iter()
+            .find(|issue| issue.key == key)
+        {
+            self.data.selected_issue = Some(issue.clone());
+            return;
+        }
+
+        self.data.selected_issue = None;
+    }
 }
 
 fn init_logging() -> Result<()> {
@@ -311,7 +347,7 @@ fn init_logging() -> Result<()> {
                 .append(true)
                 .open("logs/lazyjira.log")?,
         )))
-        .filter_level(log::LevelFilter::Debug) // Enable debug logging
+        .filter_level(log::LevelFilter::Debug)
         .format(|buf, record| {
             writeln!(
                 buf,
