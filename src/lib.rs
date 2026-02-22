@@ -1,6 +1,5 @@
 pub mod api;
 pub mod data_manager;
-pub mod jira;
 pub mod models;
 pub mod navigation;
 pub mod tui;

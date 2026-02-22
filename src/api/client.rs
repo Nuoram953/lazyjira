@@ -10,7 +10,6 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub struct JiraClient {
     client: Client,
-    base_url: String,
     auth_header: String,
     endpoints: JiraEndpoints,
 }
@@ -35,7 +34,6 @@ impl JiraClient {
 
         Ok(Self {
             client,
-            base_url,
             auth_header,
             endpoints,
         })
@@ -136,11 +134,11 @@ impl JiraClient {
         jql: &str,
         max_results: usize,
     ) -> ApiResult<Vec<JiraIssue>> {
-        let url = self.endpoints.search_issues(jql, max_results);
+        let url = self.endpoints.search_issues();
         let query = JiraQuery {
-            jql: jql,
+            jql,
             fields: Some("*all"),
-            max_results: Some(50),
+            max_results: Some(max_results),
         };
         let response = self.make_request(&url, Some(&query)).await?;
 

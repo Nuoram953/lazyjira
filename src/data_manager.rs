@@ -1,4 +1,4 @@
-use crate::api::{ApiResult, JiraClient};
+use crate::api::{error::ApiResult, JiraClient};
 use crate::models::{AppData, JiraIssue, Sprint};
 use log::{debug, error, info, warn};
 use std::sync::Arc;
@@ -134,16 +134,6 @@ impl DataManager {
             warn!("Board ID not configured, skipping sprint fetch. Set JIRA_BOARD_ID environment variable.");
             Ok(vec![])
         }
-    }
-
-    async fn fetch_last_viewed_issues(&self) -> ApiResult<Vec<JiraIssue>> {
-        debug!(
-            "Fetching recently viewed issues (max: {})",
-            self.config.max_results
-        );
-        self.client
-            .get_recently_viewed_issues(self.config.max_results)
-            .await
     }
 
     async fn fetch_last_updated_issues(&self) -> ApiResult<Vec<JiraIssue>> {

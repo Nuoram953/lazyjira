@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct SearchResponse {
     pub issues: Vec<JiraIssue>,
@@ -38,6 +39,12 @@ pub struct AppData {
     pub selected_issue: Option<JiraIssue>,
     pub loading: bool,
     pub last_updated: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl Default for AppData {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AppData {

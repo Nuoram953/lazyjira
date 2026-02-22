@@ -123,7 +123,7 @@ fn test_app_state_scenarios() {
         })
         .unwrap();
 
-    assert!(true);
+    // Test passes if rendering doesn't panic
 }
 
 #[test]

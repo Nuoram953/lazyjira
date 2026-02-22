@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::Utc;
+use serde::Deserialize;
 
 pub use crate::models::{JiraIssue, Sprint};
 
@@ -7,10 +7,13 @@ pub use crate::models::{JiraIssue, Sprint};
 pub struct JiraApiResponse<T> {
     pub issues: Option<Vec<T>>,
     pub values: Option<Vec<T>>,
+    #[allow(dead_code)]
     pub total: Option<u32>,
     #[serde(rename = "startAt")]
+    #[allow(dead_code)]
     pub start_at: Option<u32>,
     #[serde(rename = "maxResults")]
+    #[allow(dead_code)]
     pub max_results: Option<u32>,
 }
 

@@ -108,7 +108,7 @@ impl UI {
             let list = List::new(items).block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(format!("{}", sprint.name))
+                    .title(sprint.name.to_string())
                     .border_style(border_style),
             );
             frame.render_widget(list, area);

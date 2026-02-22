@@ -40,6 +40,12 @@ pub struct NavigationState {
     pub last_updated_selected: usize,
 }
 
+impl Default for NavigationState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NavigationState {
     pub fn new() -> Self {
         Self {

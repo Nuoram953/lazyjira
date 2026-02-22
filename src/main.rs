@@ -1,23 +1,21 @@
 use color_eyre::Result;
 use crossterm::event::{self, Event};
 use dotenv::dotenv;
-use log::{info, trace, warn};
+use log::{info, warn};
 use std::time::Duration;
 
 mod api;
 mod data_manager;
-mod jira;
 mod models;
 mod navigation;
 mod tui;
 mod ui;
 
 use api::JiraClient;
+use api::JiraConfig;
 use data_manager::{DataManager, DataManagerConfig};
 use models::AppData;
 use navigation::{AppAction, AppView, Direction, FocusedPane, NavigationState};
-
-use crate::jira::JiraConfig;
 
 #[derive(Debug)]
 pub struct App {
@@ -26,6 +24,12 @@ pub struct App {
     pub navigation: NavigationState,
     pub data_manager: Option<DataManager>,
     pub use_api: bool,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl App {
@@ -95,12 +99,9 @@ impl App {
             terminal.draw(|frame| ui::UI::render(frame, &self.data, &self.navigation))?;
 
             if event::poll(Duration::from_millis(100))? {
-                match event::read()? {
-                    Event::Key(key) => {
-                        let action = self.handle_key_event(key);
-                        self.handle_action(action).await?;
-                    }
-                    _ => {}
+                if let Event::Key(key) = event::read()? {
+                    let action = self.handle_key_event(key);
+                    self.handle_action(action).await?;
                 }
             }
 

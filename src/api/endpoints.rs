@@ -10,8 +10,8 @@ impl JiraEndpoints {
         }
     }
 
-    pub fn search_issues(&self, jql: &str, max_results: usize) -> String {
-        format!("{}/rest/api/3/search/jql", self.base_url,)
+    pub fn search_issues(&self) -> String {
+        format!("{}/rest/api/3/search/jql", self.base_url)
     }
 
     pub fn issue_detail(&self, issue_key: &str) -> String {
@@ -36,20 +36,18 @@ impl JiraEndpoints {
         )
     }
 
+    #[allow(dead_code)]
     pub fn board_list(&self) -> String {
         format!("{}/rest/agile/1.0/board", self.base_url)
     }
 
+    #[allow(dead_code)]
     pub fn user_activity(&self) -> String {
         format!("{}/rest/api/2/user/search/activity", self.base_url)
     }
 
+    #[allow(dead_code)]
     pub fn project_list(&self) -> String {
         format!("{}/rest/api/2/project", self.base_url)
-    }
-
-    pub fn project_issues(&self, project_key: &str, max_results: usize) -> String {
-        let jql = format!("project = {}", project_key);
-        self.search_issues(&jql, max_results)
     }
 }
