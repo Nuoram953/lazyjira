@@ -9,6 +9,10 @@ authors = ["Your Name <your.email@example.com>"]
 name = "lazyjira"
 path = "src/main.rs"
 
+[lib]
+name = "lazyjira"
+path = "src/lib.rs"
+
 [dependencies]
 log = "0.4.29"
 env_logger = "0.10"
@@ -28,3 +32,10 @@ dirs = "5.0"
 base64 = "0.22"
 urlencoding = "2.1"
 tokio-util = "0.7"
+
+[dev-dependencies]
+tokio-test = "0.4"
+mockall = "0.12"
+wiremock = "0.6"
+tempfile = "3.8"
+assert_matches = "1.5"

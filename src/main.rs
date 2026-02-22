@@ -5,8 +5,8 @@ use log::{info, trace, warn};
 use std::time::Duration;
 
 mod api;
-mod jira;
 mod data_manager;
+mod jira;
 mod models;
 mod navigation;
 mod tui;
@@ -300,9 +300,9 @@ impl App {
 fn init_logging() -> Result<()> {
     use std::fs::OpenOptions;
     use std::io::Write;
-    
+
     std::fs::create_dir_all("logs")?;
-    
+
     env_logger::Builder::from_default_env()
         .target(env_logger::Target::Pipe(Box::new(
             OpenOptions::new()
@@ -323,7 +323,7 @@ fn init_logging() -> Result<()> {
             )
         })
         .init();
-        
+
     log::info!("Logging initialized - writing to logs/lazyjira.log");
     log::info!("Log level set to DEBUG - you can control this with RUST_LOG environment variable");
     Ok(())
@@ -334,7 +334,7 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
 
     dotenv().ok();
-    
+
     init_logging()?;
 
     let mut app = App::new();

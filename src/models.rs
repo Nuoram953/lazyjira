@@ -111,3 +111,56 @@ impl AppData {
         }
     }
 }
+
+impl AppData {
+    pub fn empty_for_test() -> Self {
+        Self::new()
+    }
+
+    pub fn loading_for_test() -> Self {
+        let mut app_data = Self::new();
+        app_data.loading = true;
+        app_data
+    }
+
+    pub fn with_n_issues_for_test(n: usize) -> Self {
+        let issues: Vec<JiraIssue> = (0..n)
+            .map(|i| JiraIssue {
+                key: format!("TEST-{}", i + 1),
+                summary: format!("Test issue {}", i + 1),
+                description: Some(format!("Description for test issue {}", i + 1)),
+                status: match i % 3 {
+                    0 => "To Do".to_string(),
+                    1 => "In Progress".to_string(),
+                    _ => "Done".to_string(),
+                },
+                priority: Some(match i % 3 {
+                    0 => "High".to_string(),
+                    1 => "Medium".to_string(),
+                    _ => "Low".to_string(),
+                }),
+                assignee: Some(format!("user{}@example.com", i + 1)),
+                reporter: Some("reporter@example.com".to_string()),
+                created: Utc::now(),
+                updated: Utc::now(),
+                issue_type: "Story".to_string(),
+            })
+            .collect();
+
+        Self {
+            current_sprint: Some(Sprint {
+                id: "TEST-SPRINT".to_string(),
+                name: "Test Sprint".to_string(),
+                state: "Active".to_string(),
+                start_date: Some(Utc::now()),
+                end_date: Some(Utc::now()),
+                issues: issues.clone(),
+            }),
+            board_issues: issues.clone(),
+            last_updated_issues: issues.clone(),
+            selected_issue: issues.first().cloned(),
+            loading: false,
+            last_updated: Some(Utc::now()),
+        }
+    }
+}

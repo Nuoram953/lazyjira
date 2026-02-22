@@ -99,7 +99,7 @@ impl UI {
                     };
                     ListItem::new(format!(
                         "{}: {} [{}]",
-                        issue.key, issue.summary, issue.status 
+                        issue.key, issue.summary, issue.status
                     ))
                     .style(style)
                 })
@@ -408,7 +408,7 @@ impl UI {
         frame.render_widget(paragraph, area);
     }
 
-    fn status_color(status: &str) -> Style {
+    pub fn status_color(status: &str) -> Style {
         match status {
             "To Do" => Style::default().fg(Color::Gray),
             "In Progress" => Style::default().fg(Color::Yellow),

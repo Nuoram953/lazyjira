@@ -26,10 +26,7 @@ impl JiraEndpoints {
     }
 
     pub fn board_issues(&self, board_id: &str) -> String {
-        format!(
-            "{}/rest/agile/1.0/board/{}/issue",
-            self.base_url, board_id
-        )
+        format!("{}/rest/agile/1.0/board/{}/issue", self.base_url, board_id)
     }
 
     pub fn sprint_issues(&self, sprint_id: &str) -> String {

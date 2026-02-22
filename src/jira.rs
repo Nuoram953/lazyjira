@@ -50,8 +50,11 @@ impl JiraClient {
 
     pub async fn get_recently_updated_issues(&self, max_results: usize) -> Result<Vec<JiraIssue>> {
         // Example JQL: "updated >= -7d ORDER BY updated DESC"
-        self.get_issues_by_jql("updated >= -7d&fields=*all ORDER BY updated DESC", max_results)
-            .await
+        self.get_issues_by_jql(
+            "updated >= -7d&fields=*all ORDER BY updated DESC",
+            max_results,
+        )
+        .await
     }
 
     fn build_auth_header(&self) -> String {
