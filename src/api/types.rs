@@ -1,10 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-// Re-export from main models for convenience
 pub use crate::models::{JiraIssue, Sprint};
 
-// API-specific types that differ from your app models
 #[derive(Debug, Deserialize)]
 pub struct JiraApiResponse<T> {
     pub issues: Option<Vec<T>>,
@@ -74,7 +72,6 @@ pub struct JiraSprintApi {
     pub end_date: Option<String>,
 }
 
-// Conversion functions from API types to app types
 impl From<JiraIssueApi> for JiraIssue {
     fn from(api_issue: JiraIssueApi) -> Self {
         Self {
@@ -108,7 +105,7 @@ impl From<JiraSprintApi> for Sprint {
             state: api_sprint.state,
             start_date: api_sprint.start_date.and_then(|s| s.parse().ok()),
             end_date: api_sprint.end_date.and_then(|s| s.parse().ok()),
-            issues: Vec::new(), // Sprint issues would need a separate API call
+            issues: Vec::new(),
         }
     }
 }

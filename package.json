@@ -1,0 +1,19 @@
+{
+  "name": "lazyjira",
+  "description": "Manage your Jira board with a TUI",
+  "version": "0.0.0-development",
+  "author": {
+    "name": "Antoine Auger-Maroun",
+    "email": "antoinemaroun@gmail.com"
+  },
+  "private": true,
+  "devDependencies": {
+    "@commitlint/cli": "19.8.1",
+    "@commitlint/config-conventional": "19.8.1",
+    "husky": "9.1.7",
+    "semantic-release": "25.0.3"
+  },
+  "scripts": {
+    "prepare": "husky"
+  }
+}
