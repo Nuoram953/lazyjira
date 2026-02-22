@@ -1,29 +1,22 @@
 use color_eyre::Result;
 use crossterm::event::{self, Event};
 use dotenv::dotenv;
-use log::{info, warn};
+use log::warn;
 use std::time::Duration;
 
-mod api;
-mod data_manager;
-mod models;
-mod navigation;
-mod tui;
-mod ui;
-
-use api::JiraClient;
-use api::JiraConfig;
-use data_manager::{DataManager, DataManagerConfig};
-use models::AppData;
-use navigation::{AppAction, AppView, Direction, FocusedPane, NavigationState};
+// Use the library crate instead of declaring modules twice
+use lazyjira::api::{JiraClient, JiraConfig};
+use lazyjira::data_manager::{DataManager, DataManagerConfig};
+use lazyjira::models::AppData;
+use lazyjira::navigation::{AppAction, AppView, Direction, NavigationState};
+use lazyjira::tui;
+use lazyjira::ui;
+use lazyjira::{AppContext, CommandRegistry, CommandResult};
 
 #[derive(Debug)]
 pub struct App {
-    pub should_quit: bool,
-    pub data: AppData,
-    pub navigation: NavigationState,
-    pub data_manager: Option<DataManager>,
-    pub use_api: bool,
+    context: AppContext,
+    command_registry: CommandRegistry,
 }
 
 impl Default for App {
@@ -43,16 +36,17 @@ impl App {
             }
         };
 
+        let data = if use_api {
+            AppData::new()
+        } else {
+            AppData::with_mock_data()
+        };
+
+        let context = AppContext::new(data, NavigationState::new(), data_manager, use_api);
+
         Self {
-            should_quit: false,
-            data: if use_api {
-                AppData::new()
-            } else {
-                AppData::with_mock_data()
-            },
-            navigation: NavigationState::new(),
-            data_manager,
-            use_api,
+            context,
+            command_registry: CommandRegistry::new(),
         }
     }
 
@@ -96,64 +90,67 @@ impl App {
         let refresh_interval = std::time::Duration::from_secs(30);
 
         loop {
-            terminal.draw(|frame| ui::UI::render(frame, &self.data, &self.navigation))?;
+            terminal.draw(|frame| {
+                ui::UI::render_with_transitions(
+                    frame,
+                    &self.context.data,
+                    &self.context.navigation,
+                    &self.context.available_transitions,
+                )
+            })?;
 
             if event::poll(Duration::from_millis(100))? {
                 if let Event::Key(key) = event::read()? {
                     let action = self.handle_key_event(key);
-                    self.handle_action(action).await?;
+                    let result = self
+                        .command_registry
+                        .execute_action(&action, &mut self.context)
+                        .await?;
+
+                    match result {
+                        CommandResult::Quit => break,
+                        CommandResult::Continue | CommandResult::Handled => {}
+                    }
                 }
             }
 
-            if self.use_api && last_refresh.elapsed() > refresh_interval {
+            if self.context.use_api && last_refresh.elapsed() > refresh_interval {
                 self.refresh_data().await;
                 last_refresh = std::time::Instant::now();
             }
 
-            if self.should_quit {
+            if self.context.should_quit {
                 break;
             }
         }
 
         tui::restore()?;
+        log::info!("Application terminated successfully");
         Ok(())
     }
 
     async fn load_initial_data(&mut self) -> Result<()> {
-        info!("{}", "load_initial_data");
-        if let Some(data_manager) = &self.data_manager {
-            match data_manager.refresh_all_data().await {
-                Ok(_) => {
-                    self.data = data_manager.get_data().await;
-                    log::info!("Successfully loaded data from Jira API");
-                }
-                Err(e) => {
-                    log::error!(
-                        "Error loading initial data from API: {}. Using mock data.",
-                        e
-                    );
-                    self.data = AppData::with_mock_data();
-                    self.use_api = false;
-                }
-            }
+        if self.context.use_api {
+            self.refresh_data().await;
         }
         Ok(())
     }
 
     async fn refresh_data(&mut self) {
-        if let Some(data_manager) = &self.data_manager {
-            let selected_issue_key = self
-                .data
-                .selected_issue
-                .as_ref()
-                .map(|issue| issue.key.clone());
-
+        if let Some(data_manager) = &self.context.data_manager {
             match data_manager.refresh_all_data().await {
                 Ok(_) => {
-                    self.data = data_manager.get_data().await;
+                    let new_data = data_manager.get_data().await;
+                    let selected_issue_key = self
+                        .context
+                        .data
+                        .selected_issue
+                        .as_ref()
+                        .map(|i| i.key.clone());
+                    self.context.data = new_data;
 
-                    if let Some(key) = selected_issue_key {
-                        self.restore_selected_issue_by_key(&key);
+                    if let Some(_key) = selected_issue_key {
+                        // TODO: Restore selected issue after refresh
                     }
                 }
                 Err(e) => {
@@ -167,13 +164,15 @@ impl App {
         use crossterm::event::KeyCode::*;
         use crossterm::event::KeyModifiers;
 
-        match self.navigation.current_view {
+        match self.context.navigation.current_view {
             AppView::Main => match (key.code, key.modifiers) {
                 (Char('q'), KeyModifiers::NONE) | (Char('c'), KeyModifiers::CONTROL) => {
                     AppAction::Quit
                 }
 
                 (Char('?'), KeyModifiers::NONE) => AppAction::ShowHelp,
+
+                (Char('t'), KeyModifiers::CONTROL) => AppAction::ShowTransitions,
 
                 (Char('h'), KeyModifiers::NONE) | (Left, KeyModifiers::NONE) => {
                     AppAction::Navigate(Direction::Left)
@@ -204,133 +203,34 @@ impl App {
                 (Char('?'), KeyModifiers::NONE) | (Esc, KeyModifiers::NONE) => AppAction::GoBack,
                 _ => AppAction::None,
             },
-        }
-    }
-
-    async fn handle_action(&mut self, action: AppAction) -> Result<()> {
-        match action {
-            AppAction::Quit => {
-                self.should_quit = true;
-            }
-            AppAction::ShowHelp => {
-                self.navigation.current_view = AppView::Help;
-            }
-            AppAction::Navigate(direction) => {
-                self.handle_navigation(direction);
-            }
-            AppAction::SelectItem => {
-                self.handle_selection();
-            }
-            AppAction::GoBack => match self.navigation.current_view {
-                AppView::Help => {
-                    self.navigation.current_view = AppView::Main;
+            AppView::TransitionSelector => match (key.code, key.modifiers) {
+                (Char('q'), KeyModifiers::NONE) | (Char('c'), KeyModifiers::CONTROL) => {
+                    AppAction::Quit
                 }
-                AppView::Main => {
-                    if self.navigation.focused_pane == FocusedPane::Detail {
-                        self.navigation.go_back_from_detail();
+                (Esc, KeyModifiers::NONE) => AppAction::GoBack,
+                (Char('j'), KeyModifiers::NONE) | (Down, KeyModifiers::NONE) => {
+                    AppAction::Navigate(Direction::Down)
+                }
+                (Char('k'), KeyModifiers::NONE) | (Up, KeyModifiers::NONE) => {
+                    AppAction::Navigate(Direction::Up)
+                }
+                (Enter, KeyModifiers::NONE) => {
+                    if !self.context.available_transitions.is_empty()
+                        && self.context.navigation.transition_selected
+                            < self.context.available_transitions.len()
+                    {
+                        let transition_id = self.context.available_transitions
+                            [self.context.navigation.transition_selected]
+                            .id
+                            .clone();
+                        AppAction::ExecuteTransition(transition_id)
+                    } else {
+                        AppAction::None
                     }
                 }
+                _ => AppAction::None,
             },
-            AppAction::None => {}
         }
-        Ok(())
-    }
-
-    fn handle_navigation(&mut self, direction: Direction) {
-        match direction {
-            Direction::Left | Direction::Right => {
-                self.navigation.move_focus(direction);
-            }
-            Direction::Up | Direction::Down => {
-                if self.navigation.focused_pane == FocusedPane::Detail {
-                    self.navigation.move_focus(direction);
-                } else {
-                    let max_items = match self.navigation.focused_pane {
-                        FocusedPane::Sprint => {
-                            if let Some(sprint) = &self.data.current_sprint {
-                                sprint.issues.len()
-                            } else {
-                                0
-                            }
-                        }
-                        FocusedPane::Board => self.data.board_issues.len(),
-                        FocusedPane::LastUpdated => self.data.last_updated_issues.len(),
-                        FocusedPane::Detail => 0,
-                    };
-
-                    self.navigation.move_selection(direction, max_items);
-                    self.update_selected_issue();
-                }
-            }
-        }
-    }
-
-    fn handle_selection(&mut self) {
-        match self.navigation.focused_pane {
-            FocusedPane::Sprint | FocusedPane::Board | FocusedPane::LastUpdated => {
-                self.update_selected_issue();
-
-                self.navigation.focus_detail();
-            }
-            FocusedPane::Detail => {}
-        }
-    }
-
-    fn update_selected_issue(&mut self) {
-        match self.navigation.focused_pane {
-            FocusedPane::Sprint => {
-                if let Some(sprint) = &self.data.current_sprint {
-                    if let Some(issue) = sprint.issues.get(self.navigation.sprint_selected) {
-                        self.data.selected_issue = Some(issue.clone());
-                    }
-                }
-            }
-            FocusedPane::Board => {
-                if let Some(issue) = self
-                    .data
-                    .board_issues
-                    .get(self.navigation.last_viewed_selected)
-                {
-                    self.data.selected_issue = Some(issue.clone());
-                }
-            }
-            FocusedPane::LastUpdated => {
-                if let Some(issue) = self
-                    .data
-                    .last_updated_issues
-                    .get(self.navigation.last_updated_selected)
-                {
-                    self.data.selected_issue = Some(issue.clone());
-                }
-            }
-            FocusedPane::Detail => {}
-        }
-    }
-
-    fn restore_selected_issue_by_key(&mut self, key: &str) {
-        if let Some(sprint) = &self.data.current_sprint {
-            if let Some(issue) = sprint.issues.iter().find(|issue| issue.key == key) {
-                self.data.selected_issue = Some(issue.clone());
-                return;
-            }
-        }
-
-        if let Some(issue) = self.data.board_issues.iter().find(|issue| issue.key == key) {
-            self.data.selected_issue = Some(issue.clone());
-            return;
-        }
-
-        if let Some(issue) = self
-            .data
-            .last_updated_issues
-            .iter()
-            .find(|issue| issue.key == key)
-        {
-            self.data.selected_issue = Some(issue.clone());
-            return;
-        }
-
-        self.data.selected_issue = None;
     }
 }
 

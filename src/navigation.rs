@@ -2,6 +2,7 @@
 pub enum AppView {
     Main,
     Help,
+    TransitionSelector,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -10,6 +11,7 @@ pub enum FocusedPane {
     LastUpdated,
     Board,
     Detail,
+    TransitionList,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -19,6 +21,8 @@ pub enum AppAction {
     Navigate(Direction),
     SelectItem,
     GoBack,
+    ShowTransitions,
+    ExecuteTransition(String),
     None,
 }
 
@@ -38,6 +42,7 @@ pub struct NavigationState {
     pub sprint_selected: usize,
     pub last_viewed_selected: usize,
     pub last_updated_selected: usize,
+    pub transition_selected: usize,
 }
 
 impl Default for NavigationState {
@@ -55,6 +60,7 @@ impl NavigationState {
             sprint_selected: 0,
             last_viewed_selected: 0,
             last_updated_selected: 0,
+            transition_selected: 0,
         }
     }
 
@@ -67,12 +73,14 @@ impl NavigationState {
                 FocusedPane::LastUpdated => self.focused_pane = FocusedPane::Sprint,
                 FocusedPane::Board => self.focused_pane = FocusedPane::LastUpdated,
                 FocusedPane::Detail => {}
+                FocusedPane::TransitionList => {}
             },
             Direction::Right => match self.focused_pane {
                 FocusedPane::Sprint => self.focused_pane = FocusedPane::LastUpdated,
                 FocusedPane::LastUpdated => self.focused_pane = FocusedPane::Board,
                 FocusedPane::Board => self.focused_pane = FocusedPane::Board,
                 FocusedPane::Detail => {}
+                FocusedPane::TransitionList => {}
             },
         }
     }
@@ -111,6 +119,17 @@ impl NavigationState {
                 Direction::Left | Direction::Right => {}
             },
             FocusedPane::Detail => {}
+            FocusedPane::TransitionList => match direction {
+                Direction::Down => {
+                    if self.transition_selected + 1 < max_items {
+                        self.transition_selected = self.transition_selected.saturating_add(1);
+                    }
+                }
+                Direction::Up => {
+                    self.transition_selected = self.transition_selected.saturating_sub(1)
+                }
+                Direction::Left | Direction::Right => {}
+            },
         }
     }
 
@@ -128,5 +147,16 @@ impl NavigationState {
         if self.focused_pane == FocusedPane::Detail {
             self.focused_pane = self.previous_pane.clone().unwrap_or(FocusedPane::Sprint);
         }
+    }
+
+    pub fn show_transitions(&mut self) {
+        self.current_view = AppView::TransitionSelector;
+        self.focused_pane = FocusedPane::TransitionList;
+        self.transition_selected = 0;
+    }
+
+    pub fn hide_transitions(&mut self) {
+        self.current_view = AppView::Main;
+        self.focused_pane = self.previous_pane.clone().unwrap_or(FocusedPane::Sprint);
     }
 }

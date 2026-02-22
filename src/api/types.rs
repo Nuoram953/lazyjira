@@ -1,5 +1,7 @@
+use super::adf::AdfDocument;
 use chrono::Utc;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
+use serde_json::Value;
 
 pub use crate::models::{JiraIssue, Sprint};
 
@@ -26,6 +28,7 @@ pub struct JiraIssueApi {
 #[derive(Debug, Deserialize)]
 pub struct JiraIssueFields {
     pub summary: String,
+    #[serde(deserialize_with = "deserialize_description")]
     pub description: Option<JiraDescription>,
     pub status: JiraStatus,
     pub priority: Option<JiraPriority>,
@@ -38,10 +41,66 @@ pub struct JiraIssueFields {
 
 #[derive(Debug, Deserialize)]
 pub struct JiraDescription {
+    #[serde(flatten)]
+    pub adf: Option<AdfDocument>,
+
     pub content: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+fn deserialize_description<'de, D>(deserializer: D) -> Result<Option<JiraDescription>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<Value>::deserialize(deserializer)?;
+
+    match value {
+        None => Ok(None),
+        Some(Value::String(text)) => Ok(Some(JiraDescription {
+            adf: None,
+            content: Some(text),
+        })),
+        Some(Value::Object(_)) => match serde_json::from_value::<AdfDocument>(value.unwrap()) {
+            Ok(adf) => Ok(Some(JiraDescription {
+                adf: Some(adf),
+                content: None,
+            })),
+            Err(_) => Ok(Some(JiraDescription {
+                adf: None,
+                content: Some("Unknown format".to_string()),
+            })),
+        },
+        Some(_) => Ok(Some(JiraDescription {
+            adf: None,
+            content: Some(value.unwrap().to_string()),
+        })),
+    }
+}
+
+impl JiraDescription {
+    pub fn to_text(&self) -> Option<String> {
+        if let Some(adf) = &self.adf {
+            let text = adf.to_formatted_text();
+            if !text.trim().is_empty() {
+                return Some(text);
+            }
+        }
+
+        self.content.clone()
+    }
+
+    pub fn to_plain_text(&self) -> Option<String> {
+        if let Some(adf) = &self.adf {
+            let text = adf.to_plain_text();
+            if !text.trim().is_empty() {
+                return Some(text);
+            }
+        }
+
+        self.content.clone()
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct JiraStatus {
     pub name: String,
 }
@@ -75,12 +134,34 @@ pub struct JiraSprintApi {
     pub end_date: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct JiraTransitionsResponse {
+    pub transitions: Vec<JiraTransition>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct JiraTransition {
+    pub id: String,
+    pub name: String,
+    pub to: JiraStatus,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct JiraTransitionRequest {
+    pub transition: JiraTransitionRequestTransition,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct JiraTransitionRequestTransition {
+    pub id: String,
+}
+
 impl From<JiraIssueApi> for JiraIssue {
     fn from(api_issue: JiraIssueApi) -> Self {
         Self {
             key: api_issue.key,
             summary: api_issue.fields.summary,
-            description: api_issue.fields.description.and_then(|d| d.content),
+            description: api_issue.fields.description.and_then(|d| d.to_text()),
             status: api_issue.fields.status.name,
             priority: api_issue.fields.priority.map(|p| p.name),
             assignee: api_issue.fields.assignee.and_then(|u| u.email_address),
