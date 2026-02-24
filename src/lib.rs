@@ -1,17 +1,15 @@
-pub mod api;
-pub mod commands;
-pub mod context;
-pub mod data_manager;
-pub mod models;
-pub mod navigation;
-pub mod tui;
+//! LazyJira - A Terminal User Interface for Jira
+//!
+//! This library provides the core functionality for the LazyJira TUI application,
+//! including Jira API client, data models, navigation logic, and UI components.
+
+pub mod app;
+pub mod core;
+pub mod panes;
+pub mod services;
 pub mod ui;
 
-pub use commands::{CommandRegistry, CommandResult};
-pub use context::AppContext;
-pub use models::{AppData, JiraIssue, Sprint};
-pub use navigation::{AppAction, AppView, Direction, FocusedPane, NavigationState};
-pub use ui::UI;
-
-#[cfg(test)]
-mod test_description_parsing;
+// Re-export commonly used types and modules for easier access in tests
+pub use app::{messages::AppMessage, navigator::Navigator, state::App};
+pub use services::{client::JiraClient, config::JiraConfig, types::*};
+pub use ui::components::issue_list::IssueList;

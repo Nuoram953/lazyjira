@@ -1372,7 +1372,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_matches",
- "async-trait",
  "base64 0.22.1",
  "chrono",
  "color-eyre",
@@ -1382,6 +1381,8 @@ dependencies = [
  "env_logger",
  "log",
  "mockall",
+ "nerd_fonts",
+ "once_cell",
  "ratatui",
  "reqwest",
  "serde",
@@ -1412,6 +1413,12 @@ checksum = "5f4de44e98ddbf09375cbf4d17714d18f39195f4f4894e8524501726fd9a8a4a"
 dependencies = [
  "bitflags 2.11.0",
 ]
+
+[[package]]
+name = "linked-hash-map"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "linux-raw-sys"
@@ -1561,6 +1568,15 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "nerd_fonts"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18be2ff06cf437f6b76db0bfbf7d0d5f3132c14c487ace71377c7d26e223ee19"
+dependencies = [
+ "yaml-rust",
 ]
 
 [[package]]
@@ -3607,6 +3623,15 @@ name = "writeable"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
+
+[[package]]
+name = "yaml-rust"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
+dependencies = [
+ "linked-hash-map",
+]
 
 [[package]]
 name = "yaml-rust2"
