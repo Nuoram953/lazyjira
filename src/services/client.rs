@@ -61,6 +61,15 @@ impl JiraClient {
         format!("Basic {}", BASE64_STANDARD.encode(credentials.as_bytes()))
     }
 
+    pub fn build_jql(&self, sort: SortMode, filter: Option<String>) -> String {
+        let jql = match filter {
+            Some(f) => format!("{} {}", f, sort.jql_order_by()),
+            None => sort.jql_order_by().to_string(),
+        };
+        log::debug!("Built JQL: {}", jql);
+        jql
+    }
+
     pub async fn make_request<Q>(&self, url: &str, query: Option<&Q>) -> ApiResult<Value>
     where
         Q: Serialize + ?Sized,
@@ -115,6 +124,7 @@ impl JiraClient {
         &self,
         sprint_id: &str,
         sort: SortMode,
+        filter: Option<String>,
         page: usize,
     ) -> ApiResult<Paginated<JiraIssue>> {
         let url = self
@@ -123,7 +133,7 @@ impl JiraClient {
 
         let start_at = page * self.config.max_results;
 
-        let jql = sort.jql_order_by().to_string();
+        let jql = self.build_jql(sort, filter);
 
         let query = SprintIssuesQuery {
             jql,
@@ -163,6 +173,7 @@ impl JiraClient {
     pub async fn fetch_current_sprint_issues(
         &self,
         sort: SortMode,
+        filter: Option<String>,
         page: usize,
     ) -> ApiResult<Paginated<JiraIssue>> {
         let Some(sprint_api) = self.fetch_active_sprint().await? else {
@@ -178,19 +189,21 @@ impl JiraClient {
 
         let sprint_id = sprint_api.id.to_string();
 
-        self.fetch_sprint_issues(&sprint_id, sort, page).await
+        self.fetch_sprint_issues(&sprint_id, sort, filter, page)
+            .await
     }
 
     pub async fn fetch_recently_updated_issues(
         &self,
         sort: SortMode,
+        _filter: Option<String>,
         page: usize,
     ) -> ApiResult<Paginated<JiraIssue>> {
         let url = self.endpoints.search_issues();
 
         let start_at = page * self.config.max_results;
 
-        let jql = format!("updated >= -30d {}", sort.jql_order_by());
+        let jql = self.build_jql(sort, Some("updated >= -30d".to_string()));
 
         let query = RecentlyUpdatedIssuesQuery {
             jql,
@@ -234,13 +247,14 @@ impl JiraClient {
     pub async fn fetch_backlog_issues(
         &self,
         sort: SortMode,
+        filter: Option<String>,
         page: usize,
     ) -> ApiResult<Paginated<JiraIssue>> {
         let url = self.endpoints.backlog_issues(&self.config.board_id);
 
         let start_at = page * self.config.max_results;
 
-        let jql = sort.jql_order_by().to_string();
+        let jql = self.build_jql(sort, filter);
 
         let query = SprintIssuesQuery {
             jql,

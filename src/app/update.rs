@@ -1,7 +1,7 @@
 use super::{App, AppAction, AppMessage};
 use crate::app::keybinds::ActionKey;
 use crate::app::ActiveList;
-use crate::ui::components::ListAction;
+use crate::ui::components::{ListAction, TabAction};
 use crate::{app::keybinds::GLOBAL_KEYBINDS, core::event::AppEvent};
 use crossterm::event::KeyCode;
 
@@ -19,8 +19,18 @@ impl App {
                         ActionKey::Esc => {
                             self.search_mode = false;
                         }
-                        ActionKey::TabNext => {}
-                        ActionKey::TabPrev => {}
+                        ActionKey::TabNext => match self.active_list_mut().move_tab_right() {
+                            TabAction::TabChanged => {
+                                self.fetch_tab_issues_for_active_list();
+                            }
+                            TabAction::NoAction => {}
+                        },
+                        ActionKey::TabPrev => match self.active_list_mut().move_tab_left() {
+                            TabAction::TabChanged => {
+                                self.fetch_tab_issues_for_active_list();
+                            }
+                            TabAction::NoAction => {}
+                        },
                         ActionKey::Up => self.active_list_mut().move_up(),
                         ActionKey::Down => match self.active_list_mut().move_down() {
                             ListAction::RequestMore => {
@@ -131,13 +141,17 @@ impl App {
         let tx = self.tx.clone();
         let client = self.client.clone();
 
+        let filter = self.active_list().current_jql();
+
         tokio::spawn(async move {
             let result = match active_list {
-                ActiveList::Sprint => client.fetch_current_sprint_issues(sort, page).await,
+                ActiveList::Sprint => client.fetch_current_sprint_issues(sort, filter, page).await,
                 ActiveList::RecentlyUpdated => {
-                    client.fetch_recently_updated_issues(sort, page).await
+                    client
+                        .fetch_recently_updated_issues(sort, filter, page)
+                        .await
                 }
-                ActiveList::Backlog => client.fetch_backlog_issues(sort, page).await,
+                ActiveList::Backlog => client.fetch_backlog_issues(sort, filter, page).await,
             };
 
             match result {
@@ -172,13 +186,61 @@ impl App {
         let tx = self.tx.clone();
         let client = self.client.clone();
 
+        let filter = self.active_list().current_jql();
+
         tokio::spawn(async move {
             let result = match active_list {
-                ActiveList::Sprint => client.fetch_current_sprint_issues(sort, page).await,
+                ActiveList::Sprint => client.fetch_current_sprint_issues(sort, filter, page).await,
                 ActiveList::RecentlyUpdated => {
-                    client.fetch_recently_updated_issues(sort, page).await
+                    client
+                        .fetch_recently_updated_issues(sort, filter, page)
+                        .await
                 }
-                ActiveList::Backlog => client.fetch_backlog_issues(sort, page).await,
+                ActiveList::Backlog => client.fetch_backlog_issues(sort, filter, page).await,
+            };
+
+            match result {
+                Ok(items) => {
+                    let _ = tx.send(AppMessage::ItemsSorted {
+                        list: active_list,
+                        result: items,
+                    });
+                }
+                Err(e) => {
+                    let _ = tx.send(AppMessage::Error {
+                        list: active_list,
+                        message: e.to_string(),
+                    });
+                }
+            }
+        });
+    }
+
+    fn fetch_tab_issues_for_active_list(&mut self) {
+        let active_list = self.navigator.active;
+
+        let active_list_state = self.active_list_mut();
+        if active_list_state.is_loading {
+            return;
+        }
+        active_list_state.is_loading = true;
+
+        let page = 0;
+        let sort = self.active_list().sort_mode;
+        let tx = self.tx.clone();
+        let client = self.client.clone();
+
+        let filter = self.active_list().current_jql();
+
+        tokio::spawn(async move {
+            let result = match active_list {
+                ActiveList::Sprint => client.fetch_current_sprint_issues(sort, filter, page).await,
+                ActiveList::RecentlyUpdated => {
+                    client
+                        .fetch_recently_updated_issues(sort, filter, page)
+                        .await
+                }
+                ActiveList::Backlog => client.fetch_backlog_issues(sort, filter, page).await,
             };
 
             match result {

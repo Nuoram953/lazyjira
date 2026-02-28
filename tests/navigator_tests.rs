@@ -12,7 +12,7 @@ fn test_move_right_from_sprint() {
     assert_eq!(navigator.active, ActiveList::Sprint);
 
     navigator.move_right();
-    assert_eq!(navigator.active, ActiveList::RecentlyUpdated);
+    assert_eq!(navigator.active, ActiveList::Backlog);
 }
 
 #[test]
@@ -21,16 +21,16 @@ fn test_move_right_from_recently_updated() {
     navigator.active = ActiveList::RecentlyUpdated;
 
     navigator.move_right();
-    assert_eq!(navigator.active, ActiveList::Backlog);
+    assert_eq!(navigator.active, ActiveList::RecentlyUpdated);
 }
 
 #[test]
-fn test_move_right_from_backlog_stays_at_backlog() {
+fn test_move_right_from_recently_updated_stays_at_recently_updated() {
     let mut navigator = Navigator::new();
-    navigator.active = ActiveList::Backlog;
+    navigator.active = ActiveList::RecentlyUpdated;
 
     navigator.move_right();
-    assert_eq!(navigator.active, ActiveList::Backlog);
+    assert_eq!(navigator.active, ActiveList::RecentlyUpdated);
 }
 
 #[test]
@@ -48,7 +48,7 @@ fn test_move_left_from_recently_updated() {
     navigator.active = ActiveList::RecentlyUpdated;
 
     navigator.move_left();
-    assert_eq!(navigator.active, ActiveList::Sprint);
+    assert_eq!(navigator.active, ActiveList::Backlog);
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn test_move_left_from_backlog() {
     navigator.active = ActiveList::Backlog;
 
     navigator.move_left();
-    assert_eq!(navigator.active, ActiveList::RecentlyUpdated);
+    assert_eq!(navigator.active, ActiveList::Sprint);
 }
 
 #[test]
@@ -69,14 +69,14 @@ fn test_navigation_cycle() {
 
     // Sprint -> RecentlyUpdated -> Backlog
     navigator.move_right();
-    assert_eq!(navigator.active, ActiveList::RecentlyUpdated);
+    assert_eq!(navigator.active, ActiveList::Backlog);
 
     navigator.move_right();
-    assert_eq!(navigator.active, ActiveList::Backlog);
+    assert_eq!(navigator.active, ActiveList::RecentlyUpdated);
 
     // Backlog -> RecentlyUpdated -> Sprint
     navigator.move_left();
-    assert_eq!(navigator.active, ActiveList::RecentlyUpdated);
+    assert_eq!(navigator.active, ActiveList::Backlog);
 
     navigator.move_left();
     assert_eq!(navigator.active, ActiveList::Sprint);
