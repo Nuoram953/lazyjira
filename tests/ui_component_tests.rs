@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use lazyjira::services::sort::SortMode;
 use lazyjira::services::types::JiraIssue;
-use lazyjira::ui::components::{IssueList, ListAction};
+use lazyjira::ui::components::{IssueList, JqlTab, ListAction, TabAction};
 
 fn create_test_issue(key: &str, summary: &str) -> JiraIssue {
     JiraIssue {
@@ -33,7 +33,6 @@ fn create_test_issue_with_time(key: &str, summary: &str, updated: DateTime<Utc>)
     }
 }
 
-/// Helper function to mock JQL refetch behavior - sorts issues based on the given sort mode
 fn mock_jql_sort(mut issues: Vec<JiraIssue>, sort_mode: SortMode) -> Vec<JiraIssue> {
     match sort_mode {
         SortMode::KeyAsc => {
@@ -49,7 +48,6 @@ fn mock_jql_sort(mut issues: Vec<JiraIssue>, sort_mode: SortMode) -> Vec<JiraIss
             issues.sort_by(|a, b| b.updated.cmp(&a.updated));
         }
         SortMode::PriorityAsc | SortMode::PriorityDesc => {
-            // For this test, just fall back to key sorting since priority logic is more complex
             issues.sort_by(|a, b| a.key.cmp(&b.key));
         }
     }
@@ -180,7 +178,6 @@ fn test_sort_items_empty_list() {
 fn test_cycle_sort() {
     let mut list = IssueList::new("Test".to_string(), false, SortMode::KeyAsc);
 
-    // Test that cycle_sort() properly cycles through sort modes and returns Sort action
     assert_eq!(list.sort_mode, SortMode::KeyAsc);
 
     let action = list.cycle_sort();
@@ -200,23 +197,19 @@ fn test_cycle_sort() {
 fn test_cycle_sort_with_mock_refetch() {
     let mut list = IssueList::new("Test".to_string(), false, SortMode::KeyAsc);
 
-    // Initial unsorted items
     list.result.items = vec![
         create_test_issue("ZZZ-1", "Last issue"),
         create_test_issue("AAA-1", "First issue"),
         create_test_issue("MMM-1", "Middle issue"),
     ];
 
-    // Test initial state
     assert_eq!(list.sort_mode, SortMode::KeyAsc);
     assert_eq!(list.result.items[0].key, "ZZZ-1");
 
-    // Cycle sort and mock the JQL refetch behavior
     let action = list.cycle_sort();
     assert_eq!(action, ListAction::Sort);
     assert_eq!(list.sort_mode, SortMode::KeyDesc);
 
-    // Mock the result of JQL refetch with KeyDesc sorting
     let sorted_items_desc = vec![
         create_test_issue("ZZZ-1", "Last issue"),
         create_test_issue("MMM-1", "Middle issue"),
@@ -225,13 +218,10 @@ fn test_cycle_sort_with_mock_refetch() {
     list.result.items = sorted_items_desc;
     assert_eq!(list.result.items[0].key, "ZZZ-1");
 
-    // Cycle sort again and mock the next refetch
     let action = list.cycle_sort();
     assert_eq!(action, ListAction::Sort);
     assert_eq!(list.sort_mode, SortMode::UpdatedAsc);
 
-    // Mock the result of JQL refetch with UpdatedAsc sorting
-    // (In this test, we'll just simulate by key since we don't have real updated dates)
     let sorted_items_updated_asc = vec![
         create_test_issue("AAA-1", "First issue"),
         create_test_issue("MMM-1", "Middle issue"),
@@ -245,33 +235,31 @@ fn test_cycle_sort_with_mock_refetch() {
 fn test_cycle_sort_complete_workflow_with_helper() {
     let mut list = IssueList::new("Test".to_string(), false, SortMode::KeyAsc);
 
-    // Create test issues with different timestamps for proper sorting
     let base_time = Utc::now();
     let initial_issues = vec![
         create_test_issue_with_time(
             "ZZZ-1",
             "Last issue",
             base_time - chrono::Duration::hours(4),
-        ), // Oldest
+        ),
         create_test_issue_with_time(
             "AAA-1",
             "First issue",
             base_time - chrono::Duration::hours(1),
-        ), // Newest
+        ),
         create_test_issue_with_time(
             "MMM-1",
             "Middle issue",
             base_time - chrono::Duration::hours(2),
-        ), // Middle
+        ),
         create_test_issue_with_time(
             "BBB-1",
             "Second issue",
             base_time - chrono::Duration::hours(3),
-        ), // Second oldest
+        ),
     ];
     list.result.items = initial_issues.clone();
 
-    // Test cycle through different sort modes with proper mocking
     for expected_sort_mode in [
         SortMode::KeyDesc,
         SortMode::UpdatedAsc,
@@ -281,30 +269,23 @@ fn test_cycle_sort_complete_workflow_with_helper() {
         assert_eq!(action, ListAction::Sort);
         assert_eq!(list.sort_mode, expected_sort_mode);
 
-        // Mock the JQL refetch behavior
         let sorted_issues = mock_jql_sort(initial_issues.clone(), expected_sort_mode);
         list.result.items = sorted_issues;
 
-        // Verify the mock sorting worked correctly
         match expected_sort_mode {
             SortMode::KeyDesc => {
-                // Should be sorted by key descending: ZZZ-1, MMM-1, BBB-1, AAA-1
                 assert_eq!(list.result.items[0].key, "ZZZ-1");
                 assert_eq!(list.result.items[1].key, "MMM-1");
                 assert_eq!(list.result.items[2].key, "BBB-1");
                 assert_eq!(list.result.items[3].key, "AAA-1");
             }
             SortMode::UpdatedAsc => {
-                // Should be sorted by updated time ascending: oldest first
-                // ZZZ-1 (4h ago), BBB-1 (3h ago), MMM-1 (2h ago), AAA-1 (1h ago)
                 assert_eq!(list.result.items[0].key, "ZZZ-1");
                 assert_eq!(list.result.items[1].key, "BBB-1");
                 assert_eq!(list.result.items[2].key, "MMM-1");
                 assert_eq!(list.result.items[3].key, "AAA-1");
             }
             SortMode::UpdatedDesc => {
-                // Should be sorted by updated time descending: newest first
-                // AAA-1 (1h ago), MMM-1 (2h ago), BBB-1 (3h ago), ZZZ-1 (4h ago)
                 assert_eq!(list.result.items[0].key, "AAA-1");
                 assert_eq!(list.result.items[1].key, "MMM-1");
                 assert_eq!(list.result.items[2].key, "BBB-1");
@@ -342,4 +323,251 @@ fn test_spinner_animation_during_loading() {
     }
 
     assert!(list.is_loading);
+}
+
+#[test]
+fn test_jql_tab_creation() {
+    let tab = JqlTab::new("Test Tab", "assignee = currentUser()");
+
+    assert_eq!(tab.name, "Test Tab");
+    assert_eq!(tab.jql, "assignee = currentUser()");
+    assert_eq!(tab.description, None);
+}
+
+#[test]
+fn test_jql_tab_with_description() {
+    let tab = JqlTab::new("Test Tab", "assignee = currentUser()")
+        .with_description("Issues assigned to me");
+
+    assert_eq!(tab.name, "Test Tab");
+    assert_eq!(tab.jql, "assignee = currentUser()");
+    assert_eq!(tab.description, Some("Issues assigned to me".to_string()));
+}
+
+#[test]
+fn test_issue_list_without_tabs() {
+    let list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc);
+
+    assert!(!list.tabs_enabled);
+    assert_eq!(list.tabs().len(), 0);
+    assert_eq!(list.current_tab(), None);
+    assert_eq!(list.current_jql(), None);
+}
+
+#[test]
+fn test_issue_list_with_tabs() {
+    let tabs = vec![
+        JqlTab::new("All", ""),
+        JqlTab::new("Assigned", "assignee = currentUser()"),
+        JqlTab::new("Recent", "updated >= -7d"),
+    ];
+
+    let list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc).with_tabs(tabs);
+
+    assert!(list.tabs_enabled);
+    assert_eq!(list.tabs().len(), 3);
+
+    let current_tab = list.current_tab().unwrap();
+    assert_eq!(current_tab.name, "All");
+    assert_eq!(current_tab.jql, "");
+
+    assert_eq!(list.current_jql(), Some("".to_string()));
+}
+
+#[test]
+fn test_enable_disable_tabs() {
+    let mut list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc);
+
+    assert!(!list.tabs_enabled);
+
+    list.enable_tabs();
+    assert!(list.tabs_enabled);
+    assert!(!list.tabs().is_empty());
+
+    list.disable_tabs();
+    assert!(!list.tabs_enabled);
+}
+
+#[test]
+fn test_add_tab_to_empty_list() {
+    let mut list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc);
+
+    assert!(!list.tabs_enabled);
+    assert_eq!(list.tabs().len(), 0);
+
+    let tab = JqlTab::new("Custom", "project = TEST");
+    list.add_tab(tab);
+
+    assert!(list.tabs_enabled);
+    assert_eq!(list.tabs().len(), 1);
+    assert_eq!(list.current_tab().unwrap().name, "Custom");
+}
+
+#[test]
+fn test_add_tab_to_existing_tabs() {
+    let tabs = vec![
+        JqlTab::new("All", ""),
+        JqlTab::new("Assigned", "assignee = currentUser()"),
+    ];
+
+    let mut list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc).with_tabs(tabs);
+
+    assert_eq!(list.tabs().len(), 2);
+
+    let new_tab = JqlTab::new("High Priority", "priority in (Highest, High)");
+    list.add_tab(new_tab);
+
+    assert_eq!(list.tabs().len(), 3);
+    assert_eq!(list.tabs()[2].name, "High Priority");
+}
+
+#[test]
+fn test_move_tab_left() {
+    let tabs = vec![
+        JqlTab::new("All", ""),
+        JqlTab::new("Assigned", "assignee = currentUser()"),
+        JqlTab::new("Recent", "updated >= -7d"),
+    ];
+
+    let mut list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc).with_tabs(tabs);
+
+    assert_eq!(list.current_tab().unwrap().name, "All");
+
+    let action = list.move_tab_left();
+    assert_eq!(action, TabAction::TabChanged);
+    assert_eq!(list.current_tab().unwrap().name, "Recent");
+
+    let action = list.move_tab_left();
+    assert_eq!(action, TabAction::TabChanged);
+    assert_eq!(list.current_tab().unwrap().name, "Assigned");
+
+    let action = list.move_tab_left();
+    assert_eq!(action, TabAction::TabChanged);
+    assert_eq!(list.current_tab().unwrap().name, "All");
+}
+
+#[test]
+fn test_move_tab_right() {
+    let tabs = vec![
+        JqlTab::new("All", ""),
+        JqlTab::new("Assigned", "assignee = currentUser()"),
+        JqlTab::new("Recent", "updated >= -7d"),
+    ];
+
+    let mut list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc).with_tabs(tabs);
+
+    assert_eq!(list.current_tab().unwrap().name, "All");
+
+    let action = list.move_tab_right();
+    assert_eq!(action, TabAction::TabChanged);
+    assert_eq!(list.current_tab().unwrap().name, "Assigned");
+
+    let action = list.move_tab_right();
+    assert_eq!(action, TabAction::TabChanged);
+    assert_eq!(list.current_tab().unwrap().name, "Recent");
+
+    let action = list.move_tab_right();
+    assert_eq!(action, TabAction::TabChanged);
+    assert_eq!(list.current_tab().unwrap().name, "All");
+}
+
+#[test]
+fn test_move_tabs_without_tabs_enabled() {
+    let mut list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc);
+
+    let action = list.move_tab_left();
+    assert_eq!(action, TabAction::NoAction);
+
+    let action = list.move_tab_right();
+    assert_eq!(action, TabAction::NoAction);
+}
+
+#[test]
+fn test_single_tab_movement() {
+    let tabs = vec![JqlTab::new("Only Tab", "project = TEST")];
+
+    let mut list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc).with_tabs(tabs);
+
+    let action = list.move_tab_left();
+    assert_eq!(action, TabAction::NoAction);
+
+    let action = list.move_tab_right();
+    assert_eq!(action, TabAction::NoAction);
+
+    assert_eq!(list.current_tab().unwrap().name, "Only Tab");
+}
+
+#[test]
+fn test_default_tabs() {
+    let mut list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc);
+
+    list.enable_tabs();
+
+    let tabs = list.tabs();
+    assert!(tabs.len() >= 6);
+
+    assert_eq!(tabs[0].name, "All");
+    assert_eq!(tabs[0].jql, "");
+
+    assert_eq!(tabs[1].name, "Assigned");
+    assert_eq!(tabs[1].jql, "assignee = currentUser()");
+
+    assert_eq!(tabs[2].name, "Recent");
+    assert_eq!(tabs[2].jql, "updated >= -7d");
+}
+
+#[test]
+fn test_current_jql_returns_correct_values() {
+    let tabs = vec![
+        JqlTab::new("All", ""),
+        JqlTab::new("Assigned", "assignee = currentUser()"),
+        JqlTab::new("High Priority", "priority in (Highest, High)"),
+    ];
+
+    let mut list = IssueList::new("Test List".to_string(), false, SortMode::KeyAsc).with_tabs(tabs);
+
+    assert_eq!(list.current_jql(), Some("".to_string()));
+
+    list.move_tab_right();
+    assert_eq!(
+        list.current_jql(),
+        Some("assignee = currentUser()".to_string())
+    );
+
+    list.move_tab_right();
+    assert_eq!(
+        list.current_jql(),
+        Some("priority in (Highest, High)".to_string())
+    );
+}
+
+#[test]
+fn test_tab_action_enum() {
+    assert_ne!(TabAction::TabChanged, TabAction::NoAction);
+
+    let action = TabAction::TabChanged;
+    assert!(format!("{:?}", action).contains("TabChanged"));
+}
+
+#[test]
+fn test_jql_tab_equality() {
+    let tab1 = JqlTab::new("Test", "assignee = currentUser()");
+    let tab2 = JqlTab::new("Test", "assignee = currentUser()");
+    let tab3 = JqlTab::new("Different", "assignee = currentUser()");
+
+    assert_eq!(tab1, tab2);
+    assert_ne!(tab1, tab3);
+}
+
+#[test]
+fn test_jql_tab_clone() {
+    let original =
+        JqlTab::new("Test", "assignee = currentUser()").with_description("Test description");
+
+    let cloned = original.clone();
+
+    assert_eq!(original, cloned);
+    assert_eq!(original.name, cloned.name);
+    assert_eq!(original.jql, cloned.jql);
+    assert_eq!(original.description, cloned.description);
 }

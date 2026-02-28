@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //temporary - load initial data for all lists
     let sprint_items = app
         .client
-        .fetch_current_sprint_issues(SortMode::PriorityDesc, 0)
+        .fetch_current_sprint_issues(SortMode::PriorityDesc, Some("".to_string()), 0)
         .await
         .unwrap_or_default();
     let _ = tx.send(AppMessage::ItemsLoaded {
@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let recently_updated_items = app
         .client
-        .fetch_recently_updated_issues(SortMode::UpdatedDesc, 0)
+        .fetch_recently_updated_issues(SortMode::UpdatedDesc, Some("".to_string()), 0)
         .await
         .unwrap_or_default();
     let _ = tx.send(AppMessage::ItemsLoaded {
@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let backlog_items = app
         .client
-        .fetch_backlog_issues(SortMode::KeyDesc, 0)
+        .fetch_backlog_issues(SortMode::KeyDesc, Some("".to_string()), 0)
         .await
         .unwrap_or_default();
     let _ = tx.send(AppMessage::ItemsLoaded {
@@ -94,6 +94,12 @@ async fn handle_action(action: AppAction, app: &mut App) {
             let active_list = app.navigator.active;
             let client = app.client.clone();
 
+            let filter = match active_list {
+                ActiveList::Sprint => app.items_sprint.current_jql(),
+                ActiveList::RecentlyUpdated => app.items_recently_updated.current_jql(),
+                ActiveList::Backlog => app.items_backlog.current_jql(),
+            };
+
             let sort = match active_list {
                 ActiveList::Sprint => app.items_sprint.sort_mode,
                 ActiveList::RecentlyUpdated => app.items_recently_updated.sort_mode,
@@ -108,11 +114,15 @@ async fn handle_action(action: AppAction, app: &mut App) {
 
             tokio::spawn(async move {
                 let result = match active_list {
-                    ActiveList::Sprint => client.fetch_current_sprint_issues(sort, page).await,
-                    ActiveList::RecentlyUpdated => {
-                        client.fetch_recently_updated_issues(sort, page).await
+                    ActiveList::Sprint => {
+                        client.fetch_current_sprint_issues(sort, filter, page).await
                     }
-                    ActiveList::Backlog => client.fetch_backlog_issues(sort, page).await,
+                    ActiveList::RecentlyUpdated => {
+                        client
+                            .fetch_recently_updated_issues(sort, filter, page)
+                            .await
+                    }
+                    ActiveList::Backlog => client.fetch_backlog_issues(sort, filter, page).await,
                 };
 
                 match result {

@@ -14,8 +14,10 @@ use crate::services::{
 mod icons;
 mod navigation;
 mod spinner;
+mod tabs;
 
 pub use navigation::{ListAction, ListNavigator};
+pub use tabs::{JqlTab, TabAction, TabBar};
 
 use icons::PriorityIcons;
 use spinner::LoadingSpinner;
@@ -27,10 +29,12 @@ pub struct IssueList {
     pub sort_mode: SortMode,
     pub is_loading: bool,
     pub summary_mode: bool,
+    pub tabs_enabled: bool,
 
     navigator: ListNavigator,
     priority_icons: PriorityIcons,
     spinner: LoadingSpinner,
+    tab_bar: TabBar,
 }
 
 impl IssueList {
@@ -45,7 +49,28 @@ impl IssueList {
             priority_icons: PriorityIcons::new(),
             spinner: LoadingSpinner::new(),
             summary_mode,
+            tabs_enabled: false,
+            tab_bar: TabBar::new(),
         }
+    }
+
+    pub fn with_tabs(mut self, tabs: Vec<JqlTab>) -> Self {
+        self.tab_bar = TabBar::with_tabs(tabs);
+        self.tabs_enabled = true;
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn enable_tabs(&mut self) {
+        self.tabs_enabled = true;
+        if self.tab_bar.tabs.is_empty() {
+            self.tab_bar = TabBar::default();
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn disable_tabs(&mut self) {
+        self.tabs_enabled = false;
     }
 
     pub fn draw(&mut self, f: &mut Frame, area: Rect, focused: bool) {
@@ -103,7 +128,7 @@ impl IssueList {
                         ),
                         Style::default().add_modifier(Modifier::DIM),
                     )]));
-                    lines.push(Line::from("")); // blank line
+                    lines.push(Line::from(""));
                 }
 
                 ListItem::new(lines)
@@ -119,11 +144,7 @@ impl IssueList {
             Style::default()
         };
 
-        let title = if self.focused {
-            format!("{} [{}]", self.title, self.sort_mode.label())
-        } else {
-            self.title.to_string()
-        };
+        let title = self.title.to_string();
 
         let mut block = Block::default()
             .borders(Borders::ALL)
@@ -135,21 +156,34 @@ impl IssueList {
             });
 
         if self.focused {
+            let sort_label = self.sort_mode.label();
+            let top_right = if self.tabs_enabled {
+                if let Some(tab) = self.tab_bar.current_tab() {
+                    format!(" {} · {} ", tab.name, sort_label)
+                } else {
+                    format!(" {} ", sort_label)
+                }
+            } else {
+                format!(" {} ", sort_label)
+            };
+
+            block = block.title_top(
+                Line::from(Span::styled(top_right, Style::default().fg(Color::Yellow)))
+                    .right_aligned(),
+            );
+        }
+
+        if self.focused {
             let spinner_text = if self.is_loading {
                 format!("{} ", self.spinner.current_frame())
             } else {
                 "".to_string()
             };
 
-            block = block.title_bottom(
-                Line::from(format!(
-                    "{}{}/{}",
-                    spinner_text,
-                    current_selection + 1,
-                    item_count
-                ))
-                .right_aligned(),
-            );
+            let selection_info =
+                format!("{}{}/{}", spinner_text, current_selection + 1, item_count);
+
+            block = block.title_bottom(Line::from(format!(" {} ", selection_info)).right_aligned());
         }
 
         let list = List::new(items)
@@ -199,5 +233,63 @@ impl IssueList {
     #[allow(dead_code)]
     pub fn sort_items(&mut self) {
         self.ensure_selection();
+    }
+
+    pub fn move_tab_left(&mut self) -> TabAction {
+        if self.tabs_enabled {
+            let old_index = self.tab_bar.selected_index;
+            self.tab_bar.move_left();
+            if old_index != self.tab_bar.selected_index {
+                TabAction::TabChanged
+            } else {
+                TabAction::NoAction
+            }
+        } else {
+            TabAction::NoAction
+        }
+    }
+
+    pub fn move_tab_right(&mut self) -> TabAction {
+        if self.tabs_enabled {
+            let old_index = self.tab_bar.selected_index;
+            self.tab_bar.move_right();
+            if old_index != self.tab_bar.selected_index {
+                TabAction::TabChanged
+            } else {
+                TabAction::NoAction
+            }
+        } else {
+            TabAction::NoAction
+        }
+    }
+
+    pub fn current_jql(&self) -> Option<String> {
+        if self.tabs_enabled {
+            self.tab_bar.current_jql().map(String::from)
+        } else {
+            None
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn current_tab(&self) -> Option<&JqlTab> {
+        if self.tabs_enabled {
+            self.tab_bar.current_tab()
+        } else {
+            None
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn add_tab(&mut self, tab: JqlTab) {
+        self.tab_bar.add_tab(tab);
+        if !self.tabs_enabled {
+            self.tabs_enabled = true;
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn tabs(&self) -> &[JqlTab] {
+        &self.tab_bar.tabs
     }
 }

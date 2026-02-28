@@ -1,7 +1,7 @@
 use crate::{
     app::{navigator::Navigator, ActiveList},
     services::{sort::SortMode, JiraClient},
-    ui::components::IssueList,
+    ui::components::{IssueList, JqlTab},
 };
 
 use super::AppMessage;
@@ -33,7 +33,16 @@ impl App {
                 "Sprint Issues".to_string(),
                 false,
                 SortMode::PriorityDesc,
-            ),
+            )
+            .with_tabs(vec![
+                JqlTab::new("My Issues", "assignee = currentUser()")
+                    .with_description("Issues assigned to you in this sprint"),
+                JqlTab::new("In Progress", "status=\"In Progress\"")
+                    .with_description("Sprint issues currently being worked on"),
+                JqlTab::new("Unassigned", "assignee is EMPTY")
+                    .with_description("Sprint issues currently being worked on"),
+                JqlTab::new("All", "").with_description("Sprint issues currently being worked on"),
+            ]),
             items_backlog: IssueList::new("Backlog".to_string(), false, SortMode::KeyDesc),
             items_recently_updated: IssueList::new(
                 "Recently updated".to_string(),
