@@ -34,12 +34,12 @@ impl App {
                 false,
                 SortMode::PriorityDesc,
             ),
+            items_backlog: IssueList::new("Backlog".to_string(), false, SortMode::KeyDesc),
             items_recently_updated: IssueList::new(
                 "Recently updated".to_string(),
                 true,
                 SortMode::UpdatedDesc,
             ),
-            items_backlog: IssueList::new("Backlog".to_string(), true, SortMode::KeyDesc),
             navigator: Navigator::new(),
             client,
             search_mode: false,

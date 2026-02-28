@@ -12,14 +12,14 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     app.items_sprint
         .draw(f, left_rows[0], app.navigator.active == ActiveList::Sprint);
 
+    app.items_backlog
+        .draw(f, left_rows[1], app.navigator.active == ActiveList::Backlog);
+
     app.items_recently_updated.draw(
         f,
-        left_rows[1],
+        left_rows[2],
         app.navigator.active == ActiveList::RecentlyUpdated,
     );
-
-    app.items_backlog
-        .draw(f, left_rows[2], app.navigator.active == ActiveList::Backlog);
 
     f.render_widget(
         Block::default().title("Details").borders(Borders::ALL),
@@ -37,9 +37,9 @@ pub fn main_chunks(area: Rect) -> (Vec<Rect>, Rect) {
         .direction(Direction::Vertical)
         .constraints(
             [
-                Constraint::Percentage(50),
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
+                Constraint::Percentage(40),
+                Constraint::Percentage(40),
+                Constraint::Percentage(20),
             ]
             .as_ref(),
         )

@@ -25,16 +25,16 @@ impl Navigator {
     pub fn move_left(&mut self) {
         self.active = match self.active {
             ActiveList::Sprint => ActiveList::Sprint,
-            ActiveList::RecentlyUpdated => ActiveList::Sprint,
-            ActiveList::Backlog => ActiveList::RecentlyUpdated,
+            ActiveList::Backlog => ActiveList::Sprint,
+            ActiveList::RecentlyUpdated => ActiveList::Backlog,
         };
     }
 
     pub fn move_right(&mut self) {
         self.active = match self.active {
-            ActiveList::Sprint => ActiveList::RecentlyUpdated,
-            ActiveList::RecentlyUpdated => ActiveList::Backlog,
-            ActiveList::Backlog => ActiveList::Backlog,
+            ActiveList::Sprint => ActiveList::Backlog,
+            ActiveList::Backlog => ActiveList::RecentlyUpdated,
+            ActiveList::RecentlyUpdated => ActiveList::RecentlyUpdated,
         };
     }
 }
