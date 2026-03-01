@@ -193,8 +193,8 @@ impl IssueList {
         f.render_stateful_widget(list, area, self.navigator.state_mut());
     }
 
-    pub fn move_up(&mut self) {
-        self.navigator.move_up(self.result.items.len());
+    pub fn move_up(&mut self) -> ListAction {
+        self.navigator.move_up(self.result.items.len())
     }
 
     pub fn move_down(&mut self) -> ListAction {

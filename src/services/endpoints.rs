@@ -28,6 +28,10 @@ impl JiraEndpoints {
         )
     }
 
+    pub fn get_issue(&self, key: &str) -> String {
+        format!("{}/rest/api/3/issue/{}", self.base_url, key)
+    }
+
     pub fn get_all_issues_for_sprint(&self, board_id: &str, sprint_id: &str) -> String {
         format!(
             "{}/rest/agile/1.0/board/{}/sprint/{}/issue",

@@ -2,7 +2,7 @@ use crossterm::event::KeyCode;
 use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ActionKey {
+pub enum GlobalAction {
     Quit,
     Search,
     Esc,
@@ -13,86 +13,142 @@ pub enum ActionKey {
     Left,
     Right,
     CycleSort,
+    Enter,
 }
 
-pub struct KeyBind {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DetailAction {
+    Up,
+    Down,
+    Edit,
+    Esc,
+}
+
+pub struct GlobalKeyBind {
     pub key: KeyCode,
-    pub action: ActionKey,
+    pub action: GlobalAction,
     #[allow(dead_code)]
     pub description: &'static str,
 }
 
-pub static GLOBAL_KEYBINDS: Lazy<Vec<KeyBind>> = Lazy::new(|| {
+pub struct DetailKeyBind {
+    pub key: KeyCode,
+    pub action: DetailAction,
+    #[allow(dead_code)]
+    pub description: &'static str,
+}
+
+pub static GLOBAL_KEYBINDS: Lazy<Vec<GlobalKeyBind>> = Lazy::new(|| {
     vec![
-        KeyBind {
+        GlobalKeyBind {
+            key: KeyCode::Enter,
+            action: GlobalAction::Enter,
+            description: "Focused the detail pane",
+        },
+        GlobalKeyBind {
             key: KeyCode::Char('q'),
-            action: ActionKey::Quit,
+            action: GlobalAction::Quit,
             description: "Quit the app",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Char('/'),
-            action: ActionKey::Search,
+            action: GlobalAction::Search,
             description: "Enter search mode",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Esc,
-            action: ActionKey::Esc,
+            action: GlobalAction::Esc,
             description: "Cancel / exit search",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Char(']'),
-            action: ActionKey::TabNext,
+            action: GlobalAction::TabNext,
             description: "Next tab",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Char('['),
-            action: ActionKey::TabPrev,
+            action: GlobalAction::TabPrev,
             description: "Previous tab",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Char('s'),
-            action: ActionKey::CycleSort,
+            action: GlobalAction::CycleSort,
             description: "Cycle sort",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Up,
-            action: ActionKey::Up,
+            action: GlobalAction::Up,
             description: "Move selection up",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Char('k'),
-            action: ActionKey::Up,
+            action: GlobalAction::Up,
             description: "Move selection up",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Down,
-            action: ActionKey::Down,
+            action: GlobalAction::Down,
             description: "Move selection down",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Char('j'),
-            action: ActionKey::Down,
+            action: GlobalAction::Down,
             description: "Move selection down",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Left,
-            action: ActionKey::Left,
+            action: GlobalAction::Left,
             description: "Focus",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Char('h'),
-            action: ActionKey::Left,
+            action: GlobalAction::Left,
             description: "Focus",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Right,
-            action: ActionKey::Right,
+            action: GlobalAction::Right,
             description: "Focus",
         },
-        KeyBind {
+        GlobalKeyBind {
             key: KeyCode::Char('l'),
-            action: ActionKey::Right,
+            action: GlobalAction::Right,
             description: "Focus",
+        },
+    ]
+});
+
+pub static DETAIL_KEYBINDS: Lazy<Vec<DetailKeyBind>> = Lazy::new(|| {
+    vec![
+        DetailKeyBind {
+            key: KeyCode::Up,
+            action: DetailAction::Up,
+            description: "Move to previous field",
+        },
+        DetailKeyBind {
+            key: KeyCode::Char('k'),
+            action: DetailAction::Up,
+            description: "Move to previous field",
+        },
+        DetailKeyBind {
+            key: KeyCode::Down,
+            action: DetailAction::Down,
+            description: "Move to next field",
+        },
+        DetailKeyBind {
+            key: KeyCode::Char('j'),
+            action: DetailAction::Down,
+            description: "Move to next field",
+        },
+        DetailKeyBind {
+            key: KeyCode::Char('e'),
+            action: DetailAction::Edit,
+            description: "Edit field",
+        },
+        DetailKeyBind {
+            key: KeyCode::Esc,
+            action: DetailAction::Esc,
+            description: "Exit edit mode or detail focus",
         },
     ]
 });

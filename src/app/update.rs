@@ -1,61 +1,129 @@
 use super::{App, AppAction, AppMessage};
-use crate::app::keybinds::ActionKey;
+use crate::app::keybinds::{DetailAction, GlobalAction};
 use crate::app::ActiveList;
 use crate::ui::components::{ListAction, TabAction};
-use crate::{app::keybinds::GLOBAL_KEYBINDS, core::event::AppEvent};
+use crate::{
+    app::keybinds::{DETAIL_KEYBINDS, GLOBAL_KEYBINDS},
+    core::event::AppEvent,
+};
 use crossterm::event::KeyCode;
 
 impl App {
     pub fn handle_event(&mut self, event: AppEvent) -> Option<AppAction> {
         match event {
             AppEvent::Key(key) => {
-                if let Some(bind) = GLOBAL_KEYBINDS.iter().find(|b| b.key == key.code) {
-                    match bind.action {
-                        ActionKey::Quit => return Some(AppAction::Quit),
-                        ActionKey::Search => {
-                            self.search_mode = true;
-                            self.search_query.clear();
-                        }
-                        ActionKey::Esc => {
-                            self.search_mode = false;
-                        }
-                        ActionKey::TabNext => match self.active_list_mut().move_tab_right() {
-                            TabAction::TabChanged => {
-                                self.fetch_tab_issues_for_active_list();
-                            }
-                            TabAction::NoAction => {}
-                        },
-                        ActionKey::TabPrev => match self.active_list_mut().move_tab_left() {
-                            TabAction::TabChanged => {
-                                self.fetch_tab_issues_for_active_list();
-                            }
-                            TabAction::NoAction => {}
-                        },
-                        ActionKey::Up => self.active_list_mut().move_up(),
-                        ActionKey::Down => match self.active_list_mut().move_down() {
-                            ListAction::RequestMore => {
-                                self.fetch_more_for_active_list();
-                            }
-                            ListAction::None => {}
-                            ListAction::Sort => {}
-                        },
-                        ActionKey::Left => self.navigator.move_left(),
-                        ActionKey::Right => self.navigator.move_right(),
-                        ActionKey::CycleSort => match self.active_list_mut().cycle_sort() {
-                            ListAction::RequestMore => {}
-                            ListAction::None => {}
-                            ListAction::Sort => {
-                                self.sort_for_active_list();
-                            }
-                        },
-                    }
-                } else if self.search_mode {
+                if self.search_mode {
                     match key.code {
                         KeyCode::Char(c) => self.search_query.push(c),
                         KeyCode::Backspace => {
                             self.search_query.pop();
                         }
                         _ => {}
+                    }
+                    return None;
+                }
+
+                if self.detail_view.focused {
+                    if let Some(bind) = DETAIL_KEYBINDS.iter().find(|b| b.key == key.code) {
+                        match bind.action {
+                            DetailAction::Up => {
+                                self.detail_view.move_up();
+                            }
+                            DetailAction::Down => {
+                                self.detail_view.move_down();
+                            }
+                            DetailAction::Edit => {
+                                if !self.detail_view.edit_mode {
+                                    self.detail_view.enter_edit_mode();
+                                }
+                            }
+                            DetailAction::Esc => {
+                                if self.detail_view.edit_mode {
+                                    self.detail_view.exit_edit_mode();
+                                } else {
+                                    self.detail_view.focused = false;
+                                }
+                            }
+                        }
+                        return None;
+                    }
+                }
+
+                if let Some(bind) = GLOBAL_KEYBINDS.iter().find(|b| b.key == key.code) {
+                    match bind.action {
+                        GlobalAction::Quit => return Some(AppAction::Quit),
+                        GlobalAction::Search => {
+                            self.search_mode = true;
+                            self.search_query.clear();
+                        }
+                        GlobalAction::Enter => {
+                            self.detail_view.focused = true;
+                        }
+                        GlobalAction::Esc => {
+                            if !self.detail_view.focused {
+                                self.search_mode = false;
+                            }
+                        }
+                        GlobalAction::TabNext => match self.active_list_mut().move_tab_right() {
+                            TabAction::TabChanged => {
+                                self.fetch_tab_issues_for_active_list();
+                            }
+                            TabAction::NoAction => {}
+                        },
+                        GlobalAction::TabPrev => match self.active_list_mut().move_tab_left() {
+                            TabAction::TabChanged => {
+                                self.fetch_tab_issues_for_active_list();
+                            }
+                            TabAction::NoAction => {}
+                        },
+                        GlobalAction::Up => {
+                            if !self.detail_view.focused {
+                                match self.active_list_mut().move_up() {
+                                    ListAction::RequestMore => {}
+                                    ListAction::None => {}
+                                    ListAction::Sort => {}
+                                    ListAction::SelectionChanged => {
+                                        self.fetch_detail_issue();
+                                    }
+                                }
+                            }
+                        }
+                        GlobalAction::Down => {
+                            if !self.detail_view.focused {
+                                match self.active_list_mut().move_down() {
+                                    ListAction::RequestMore => {
+                                        self.fetch_more_for_active_list();
+                                    }
+                                    ListAction::None => {}
+                                    ListAction::Sort => {}
+                                    ListAction::SelectionChanged => {
+                                        self.fetch_detail_issue();
+                                    }
+                                }
+                            }
+                        }
+                        GlobalAction::Left => {
+                            if !self.detail_view.focused {
+                                self.navigator.move_left();
+                            }
+                        }
+                        GlobalAction::Right => {
+                            if !self.detail_view.focused {
+                                self.navigator.move_right();
+                            }
+                        }
+                        GlobalAction::CycleSort => {
+                            if !self.detail_view.focused {
+                                match self.active_list_mut().cycle_sort() {
+                                    ListAction::RequestMore => {}
+                                    ListAction::None => {}
+                                    ListAction::Sort => {
+                                        self.sort_for_active_list();
+                                    }
+                                    ListAction::SelectionChanged => {}
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -123,6 +191,37 @@ impl App {
                 target.is_loading = false;
 
                 println!("Error for {:?}: {}", list, message);
+            }
+            AppMessage::ItemDetailLoaded { item } => {
+                self.detail_view.set_issue(Some(item));
+            }
+        }
+    }
+
+    fn fetch_detail_issue(&mut self) {
+        let active_list = self.navigator.active;
+        let tx = self.tx.clone();
+        let client = self.client.clone();
+
+        if let Some(index) = self.active_list().state_selected() {
+            if let Some(issue) = self.active_list().result.items.get(index) {
+                let key = issue.key.clone();
+
+                tokio::spawn(async move {
+                    let result = client.fetch_issue_by_key(key).await;
+
+                    match result {
+                        Ok(item) => {
+                            let _ = tx.send(AppMessage::ItemDetailLoaded { item });
+                        }
+                        Err(e) => {
+                            let _ = tx.send(AppMessage::Error {
+                                list: active_list,
+                                message: e.to_string(),
+                            });
+                        }
+                    }
+                });
             }
         }
     }

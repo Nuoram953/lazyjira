@@ -4,6 +4,7 @@ use ratatui::widgets::ListState;
 pub enum ListAction {
     None,
     RequestMore,
+    SelectionChanged,
     Sort,
 }
 
@@ -18,26 +19,25 @@ impl ListNavigator {
         Self { state }
     }
 
-    // pub fn state(&self) -> &ListState {
-    //     &self.state
-    // }
-
     pub fn state_mut(&mut self) -> &mut ListState {
         &mut self.state
     }
 
-    pub fn move_up(&mut self, item_count: usize) {
+    pub fn move_up(&mut self, item_count: usize) -> ListAction {
         if item_count == 0 {
-            return;
+            return ListAction::None;
         }
 
         if let Some(selected) = self.state.selected() {
             if selected > 0 {
                 self.state.select(Some(selected - 1));
+                return ListAction::SelectionChanged;
             }
         } else {
             self.state.select(Some(0));
         }
+
+        ListAction::None
     }
 
     pub fn move_down(&mut self, item_count: usize, has_more: bool, is_loading: bool) -> ListAction {
@@ -48,7 +48,7 @@ impl ListNavigator {
         if let Some(selected) = self.state.selected() {
             if selected < item_count.saturating_sub(1) {
                 self.state.select(Some(selected + 1));
-                return ListAction::None;
+                return ListAction::SelectionChanged;
             }
 
             if has_more && !is_loading {

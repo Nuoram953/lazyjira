@@ -36,7 +36,7 @@ impl<T> Paginated<T> {
     }
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct JiraIssue {
     pub key: String,
     pub summary: String,
