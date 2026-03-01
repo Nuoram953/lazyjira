@@ -1,7 +1,7 @@
 use crate::{
     app::{navigator::Navigator, ActiveList},
     services::{sort::SortMode, JiraClient},
-    ui::components::{IssueList, JqlTab},
+    ui::components::{issue_detail::IssueDetail, IssueList, JqlTab},
 };
 
 use super::AppMessage;
@@ -9,6 +9,7 @@ use ratatui::widgets::ListState;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub struct App {
+    pub detail_view: IssueDetail,
     pub items_sprint: IssueList,
     pub items_recently_updated: IssueList,
     pub items_backlog: IssueList,
@@ -29,6 +30,7 @@ impl App {
         let client = JiraClient::new().expect("Failed to ");
 
         Self {
+            detail_view: IssueDetail::new(),
             items_sprint: IssueList::new(
                 "Sprint Issues".to_string(),
                 false,

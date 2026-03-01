@@ -8,6 +8,11 @@ use serde_json::Value;
 use std::time::Duration;
 
 #[derive(Serialize)]
+pub struct IssueQuery {
+    pub fields: String,
+}
+
+#[derive(Serialize)]
 pub struct SprintIssuesQuery {
     pub jql: String,
     #[serde(rename = "maxResults")]
@@ -292,5 +297,22 @@ impl JiraClient {
             start_at: start_at as usize,
             max_results: max_results as usize,
         })
+    }
+
+    pub async fn fetch_issue_by_key(&self, key: String) -> ApiResult<JiraIssue> {
+        let url = self.endpoints.get_issue(&key);
+
+        let query = IssueQuery {
+            fields: "*all".to_string(),
+        };
+
+        let response = self.make_request(&url, Some(&query)).await?;
+
+        let api_response: JiraIssueApi = serde_json::from_value(response).map_err(|e| {
+            log::error!("Parse error: {:?}", e);
+            ApiError::Parse(format!("Failed to parse search response: {}", e))
+        })?;
+
+        Ok(JiraIssue::from(api_response))
     }
 }

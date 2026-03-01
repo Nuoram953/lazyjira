@@ -1,6 +1,5 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    widgets::{Block, Borders},
     Frame,
 };
 
@@ -9,22 +8,25 @@ use crate::app::{ActiveList, App};
 pub fn draw(f: &mut Frame, app: &mut App) {
     let (left_rows, right_col) = main_chunks(f.area());
 
-    app.items_sprint
-        .draw(f, left_rows[0], app.navigator.active == ActiveList::Sprint);
+    app.items_sprint.draw(
+        f,
+        left_rows[0],
+        app.navigator.active == ActiveList::Sprint && !app.detail_view.focused,
+    );
 
-    app.items_backlog
-        .draw(f, left_rows[1], app.navigator.active == ActiveList::Backlog);
+    app.items_backlog.draw(
+        f,
+        left_rows[1],
+        app.navigator.active == ActiveList::Backlog && !app.detail_view.focused,
+    );
 
     app.items_recently_updated.draw(
         f,
         left_rows[2],
-        app.navigator.active == ActiveList::RecentlyUpdated,
+        app.navigator.active == ActiveList::RecentlyUpdated && !app.detail_view.focused,
     );
 
-    f.render_widget(
-        Block::default().title("Details").borders(Borders::ALL),
-        right_col,
-    );
+    app.detail_view.draw(f, right_col, app.detail_view.focused);
 }
 
 pub fn main_chunks(area: Rect) -> (Vec<Rect>, Rect) {

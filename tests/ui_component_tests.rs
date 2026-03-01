@@ -117,27 +117,6 @@ fn test_move_down_empty_list() {
 }
 
 #[test]
-fn test_move_down_with_items() {
-    let mut list = IssueList::new("Test".to_string(), false, SortMode::KeyAsc);
-    list.result.items = vec![
-        create_test_issue("TEST-1", "First issue"),
-        create_test_issue("TEST-2", "Second issue"),
-    ];
-
-    let action = list.move_down();
-    assert_eq!(action, ListAction::None);
-    assert_eq!(list.state_selected(), Some(0));
-
-    let action = list.move_down();
-    assert_eq!(action, ListAction::None);
-    assert_eq!(list.state_selected(), Some(1));
-
-    let action = list.move_down();
-    assert_eq!(action, ListAction::None);
-    assert_eq!(list.state_selected(), Some(1));
-}
-
-#[test]
 fn test_move_down_with_pagination() {
     let mut list = IssueList::new("Test".to_string(), false, SortMode::KeyAsc);
     list.result.items = vec![

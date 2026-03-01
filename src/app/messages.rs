@@ -9,6 +9,9 @@ pub enum AppMessage {
         result: Paginated<JiraIssue>,
         append: bool,
     },
+    ItemDetailLoaded {
+        item: JiraIssue,
+    },
     ItemsSorted {
         list: ActiveList,
         result: Paginated<JiraIssue>,
