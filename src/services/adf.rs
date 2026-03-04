@@ -29,7 +29,10 @@ pub fn extract_text_from_adf(content: &Value) -> String {
                 text.push_str(paragraph_text.trim());
 
                 match item_type {
-                    Some("paragraph") => text.push('\n'),
+                    Some("paragraph") => {
+                        text.push('\n');
+                        text.push('\n')
+                    }
                     Some("heading") => text.push('\n'),
                     Some("bulletList") | Some("orderedList") => text.push('\n'),
                     Some("listItem") => text.push('\n'),
