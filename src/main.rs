@@ -8,7 +8,7 @@ mod ui;
 
 use app::{App, AppAction, AppMessage};
 
-use crate::{app::ActiveList, services::sort::SortMode};
+use crate::app::ActiveList;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,41 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, mut rx) = mpsc::unbounded_channel();
     let mut app = App::new(tx.clone());
 
-    let tx = app.tx.clone();
-
-    //temporary - load initial data for all lists
-    let sprint_items = app
-        .client
-        .fetch_current_sprint_issues(SortMode::PriorityDesc, Some("".to_string()), 0)
-        .await
-        .unwrap_or_default();
-    let _ = tx.send(AppMessage::ItemsLoaded {
-        list: ActiveList::Sprint,
-        result: sprint_items,
-        append: false,
-    });
-
-    let recently_updated_items = app
-        .client
-        .fetch_recently_updated_issues(SortMode::UpdatedDesc, Some("".to_string()), 0)
-        .await
-        .unwrap_or_default();
-    let _ = tx.send(AppMessage::ItemsLoaded {
-        list: ActiveList::RecentlyUpdated,
-        result: recently_updated_items,
-        append: false,
-    });
-
-    let backlog_items = app
-        .client
-        .fetch_backlog_issues(SortMode::KeyDesc, Some("".to_string()), 0)
-        .await
-        .unwrap_or_default();
-    let _ = tx.send(AppMessage::ItemsLoaded {
-        list: ActiveList::Backlog,
-        result: backlog_items,
-        append: false,
-    });
+    //load initial data for all lists
+    app.load_initial_data().await;
 
     loop {
         terminal.draw(|f| ui::draw(f, &mut app))?;
