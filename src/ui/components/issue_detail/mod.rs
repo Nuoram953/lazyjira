@@ -108,12 +108,14 @@ impl IssueDetail {
                     Constraint::Length(6),
                     Constraint::Length(8),
                     Constraint::Min(0),
+                    Constraint::Min(0),
                 ])
                 .split(inner_area);
 
             self.render_summary_section(f, section_chunks[0]);
             self.render_details_section(f, section_chunks[1]);
             self.render_description_section(f, section_chunks[2]);
+            self.render_subtasks_section(f, section_chunks[3]);
         } else {
             f.render_widget(Paragraph::new("No issue selected"), inner_area);
         }
@@ -319,6 +321,73 @@ impl IssueDetail {
                 .style(style);
 
             f.render_widget(description_paragraph, main_chunks[2]);
+        }
+    }
+
+    fn render_subtasks_section(&self, f: &mut Frame, area: Rect) {
+        let title = self.render_title_section("Subtasks", DetailField::Subtasks);
+
+        let main_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Min(0),
+            ])
+            .split(area);
+
+        f.render_widget(Paragraph::new(title), main_chunks[0]);
+
+        let line_color = Color::Yellow;
+
+        let separator = Line::from(vec![Span::styled(
+            "─".repeat(area.width as usize),
+            Style::default().fg(line_color),
+        )]);
+        f.render_widget(Paragraph::new(separator), main_chunks[1]);
+
+        if let Some(issue) = &self.issue {
+            let subtasks_lines: Vec<Line> = if issue.subtasks.is_empty() {
+                vec![Line::from("No subtasks")]
+            } else {
+                issue
+                    .subtasks
+                    .iter()
+                    .enumerate()
+                    .map(|(index, subtask)| {
+                        let summary = subtask.summary.as_deref().unwrap_or("No summary");
+                        let issue_type = subtask.issue_type.as_deref().unwrap_or("Unknown");
+
+                        Line::from(vec![
+                            Span::styled(
+                                format!("{}. ", index + 1),
+                                Style::default().fg(Color::Cyan),
+                            ),
+                            Span::styled(
+                                format!("{} ", subtask.key),
+                                Style::default().fg(Color::Blue),
+                            ),
+                            Span::styled(
+                                format!("[{}] ", issue_type),
+                                Style::default().fg(Color::Green),
+                            ),
+                            Span::styled(summary, Style::default().fg(Color::White)),
+                        ])
+                    })
+                    .collect()
+            };
+
+            let style = if self.focused && self.selected_field == DetailField::Subtasks {
+                Style::default().bg(Color::DarkGray)
+            } else {
+                Style::default()
+            };
+
+            let subtasks_paragraph = Paragraph::new(subtasks_lines)
+                .wrap(Wrap { trim: true })
+                .style(style);
+
+            f.render_widget(subtasks_paragraph, main_chunks[2]);
         }
     }
 

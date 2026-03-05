@@ -36,6 +36,13 @@ impl<T> Paginated<T> {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct JiraIssueRef {
+    pub key: String,
+    pub summary: Option<String>,
+    pub issue_type: Option<String>,
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct JiraIssue {
     pub key: String,
@@ -48,6 +55,8 @@ pub struct JiraIssue {
     pub created: DateTime<Utc>,
     pub updated: DateTime<Utc>,
     pub issue_type: String,
+    pub parent: Option<JiraIssueRef>,
+    pub subtasks: Vec<JiraIssueRef>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,6 +101,20 @@ pub struct JiraIssueFields {
     pub created: String,
     pub updated: String,
     pub issuetype: JiraIssueType,
+    pub parent: Option<JiraIssueRefApi>,
+    pub subtasks: Option<Vec<JiraIssueRefApi>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct JiraIssueRefApi {
+    pub key: String,
+    pub fields: Option<JiraIssueRefFields>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct JiraIssueRefFields {
+    pub summary: Option<String>,
+    pub issuetype: Option<JiraIssueType>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -131,6 +154,19 @@ pub struct JiraSprintApi {
     pub end_date: Option<String>,
 }
 
+impl From<JiraIssueRefApi> for JiraIssueRef {
+    fn from(api_ref: JiraIssueRefApi) -> Self {
+        Self {
+            key: api_ref.key,
+            summary: api_ref.fields.as_ref().and_then(|f| f.summary.clone()),
+            issue_type: api_ref
+                .fields
+                .as_ref()
+                .and_then(|f| f.issuetype.as_ref().map(|it| it.name.clone())),
+        }
+    }
+}
+
 impl From<JiraIssueApi> for JiraIssue {
     fn from(api_issue: JiraIssueApi) -> Self {
         Self {
@@ -152,6 +188,14 @@ impl From<JiraIssueApi> for JiraIssue {
                 .parse()
                 .unwrap_or_else(|_| Utc::now()),
             issue_type: api_issue.fields.issuetype.name,
+            parent: api_issue.fields.parent.map(|p| p.into()),
+            subtasks: api_issue
+                .fields
+                .subtasks
+                .unwrap_or_default()
+                .into_iter()
+                .map(|s| s.into())
+                .collect(),
         }
     }
 }
