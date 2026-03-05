@@ -105,11 +105,13 @@ impl App {
                         GlobalAction::Left => {
                             if !self.detail_view.focused {
                                 self.navigator.move_left();
+                                self.fetch_detail_issue();
                             }
                         }
                         GlobalAction::Right => {
                             if !self.detail_view.focused {
                                 self.navigator.move_right();
+                                self.fetch_detail_issue();
                             }
                         }
                         GlobalAction::CycleSort => {
@@ -350,11 +352,22 @@ impl App {
             };
 
             if let Ok(result) = self.fetch_issues_for_list(list, None, filter, 0).await {
-                let _ = self.tx.send(AppMessage::ItemsLoaded {
-                    list,
-                    result,
-                    append: false,
-                });
+                let issue_list = match list {
+                    ActiveList::Sprint => &mut self.items_sprint,
+                    ActiveList::RecentlyUpdated => &mut self.items_recently_updated,
+                    ActiveList::Backlog => &mut self.items_backlog,
+                };
+
+                issue_list.is_loading = false;
+                issue_list.result = result;
+                issue_list.result.page += 1;
+                issue_list.result.has_more = true;
+
+                if !issue_list.result.items.is_empty() && !issue_list.has_selection() {
+                    issue_list.ensure_selection();
+                }
+
+                self.fetch_detail_issue();
             }
         }
     }
