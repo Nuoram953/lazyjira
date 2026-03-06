@@ -6,6 +6,7 @@ use crate::{
 
 use super::AppMessage;
 use ratatui::widgets::ListState;
+use std::time::Instant;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub struct App {
@@ -20,6 +21,8 @@ pub struct App {
     pub loading: bool,
     pub should_quit: bool,
     pub tx: UnboundedSender<AppMessage>,
+    pub detail_fetch_timer: Option<Instant>,
+    pub pending_detail_key: Option<String>,
 }
 
 impl App {
@@ -58,6 +61,8 @@ impl App {
             loading: false,
             should_quit: false,
             tx,
+            detail_fetch_timer: None,
+            pending_detail_key: None,
         }
     }
 

@@ -7,6 +7,7 @@ use crate::{
     core::event::AppEvent,
 };
 use crossterm::event::KeyCode;
+use std::time::{Duration, Instant};
 
 impl App {
     pub fn handle_event(&mut self, event: AppEvent) -> Option<AppAction> {
@@ -194,8 +195,12 @@ impl App {
 
                 println!("Error for {:?}: {}", list, message);
             }
-            AppMessage::ItemDetailLoaded { item } => {
-                self.detail_view.set_issue(Some(item));
+            AppMessage::ItemDetailLoaded { item, key } => {
+                if self.pending_detail_key.as_ref() == Some(&key) {
+                    self.detail_view.set_issue(Some(item));
+                    self.pending_detail_key = None;
+                    self.detail_fetch_timer = None;
+                }
             }
         }
     }
@@ -209,12 +214,26 @@ impl App {
             if let Some(issue) = self.active_list().result.items.get(index) {
                 let key = issue.key.clone();
 
+                if self.pending_detail_key.as_ref() == Some(&key) {
+                    return;
+                }
+
+                self.pending_detail_key = Some(key.clone());
+                self.detail_fetch_timer = Some(Instant::now());
+
+                let pending_key = key.clone();
+
                 tokio::spawn(async move {
+                    tokio::time::sleep(Duration::from_millis(300)).await;
+
                     let result = client.fetch_issue_by_key(key).await;
 
                     match result {
                         Ok(item) => {
-                            let _ = tx.send(AppMessage::ItemDetailLoaded { item });
+                            let _ = tx.send(AppMessage::ItemDetailLoaded {
+                                item,
+                                key: pending_key,
+                            });
                         }
                         Err(e) => {
                             let _ = tx.send(AppMessage::Error {
@@ -225,6 +244,9 @@ impl App {
                     }
                 });
             }
+        } else {
+            self.pending_detail_key = None;
+            self.detail_fetch_timer = None;
         }
     }
 

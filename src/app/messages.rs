@@ -11,6 +11,7 @@ pub enum AppMessage {
     },
     ItemDetailLoaded {
         item: JiraIssue,
+        key: String,
     },
     ItemsSorted {
         list: ActiveList,
