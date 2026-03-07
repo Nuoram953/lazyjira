@@ -1,9 +1,12 @@
-use crate::services::{adf, types::JiraIssue};
+use crate::{
+    services::{adf, types::JiraIssue},
+    ui::components::{IssueItemMode, IssueItemRenderer},
+};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Padding, Paragraph, Wrap},
+    widgets::{Block, Borders, List, ListItem, Padding, Paragraph, Wrap},
     Frame,
 };
 
@@ -50,6 +53,7 @@ pub struct IssueDetail {
     pub focused: bool,
     pub selected_field: DetailField,
     pub edit_mode: bool,
+    issue_renderer: IssueItemRenderer,
 }
 
 impl Default for IssueDetail {
@@ -66,6 +70,7 @@ impl IssueDetail {
             focused: false,
             selected_field: DetailField::Key,
             edit_mode: false,
+            issue_renderer: IssueItemRenderer::new(),
         }
     }
 
@@ -126,7 +131,7 @@ impl IssueDetail {
         let style = if is_selected {
             Style::default()
                 .fg(Color::Yellow)
-                .bg(Color::DarkGray)
+                .bg(Color::Yellow)
                 .add_modifier(ratatui::style::Modifier::BOLD)
         } else {
             Style::default()
@@ -137,7 +142,7 @@ impl IssueDetail {
     }
 
     fn render_summary_section(&self, f: &mut Frame, area: Rect) {
-        let title = self.render_title_section("Summary", DetailField::Details);
+        let title = self.render_title_section("Summary", DetailField::Summary);
 
         let main_chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -175,7 +180,7 @@ impl IssueDetail {
             ];
 
             let style = if self.focused && self.selected_field == DetailField::Summary {
-                Style::default().bg(Color::DarkGray)
+                Style::default().bg(Color::Yellow)
             } else {
                 Style::default()
             };
@@ -255,7 +260,7 @@ impl IssueDetail {
             ];
 
             let style = if self.focused && self.selected_field == DetailField::Details {
-                Style::default().bg(Color::DarkGray)
+                Style::default().bg(Color::Yellow)
             } else {
                 Style::default()
             };
@@ -311,7 +316,7 @@ impl IssueDetail {
             };
 
             let style = if self.focused && self.selected_field == DetailField::Description {
-                Style::default().bg(Color::DarkGray)
+                Style::default().bg(Color::Yellow)
             } else {
                 Style::default()
             };
@@ -347,47 +352,45 @@ impl IssueDetail {
         f.render_widget(Paragraph::new(separator), main_chunks[1]);
 
         if let Some(issue) = &self.issue {
-            let subtasks_lines: Vec<Line> = if issue.subtasks.is_empty() {
-                vec![Line::from("No subtasks")]
+            if issue.subtasks.is_empty() {
+                // Show "No subtasks" message
+                let no_subtasks_lines = vec![Line::from("No subtasks")];
+                let style = if self.focused && self.selected_field == DetailField::Subtasks {
+                    Style::default().bg(Color::Yellow)
+                } else {
+                    Style::default()
+                };
+
+                let no_subtasks_paragraph = Paragraph::new(no_subtasks_lines)
+                    .wrap(Wrap { trim: true })
+                    .style(style);
+
+                f.render_widget(no_subtasks_paragraph, main_chunks[2]);
             } else {
-                issue
+                // Render subtasks as full issues (2-line format)
+                let subtasks_items: Vec<ListItem> = issue
                     .subtasks
                     .iter()
-                    .enumerate()
-                    .map(|(index, subtask)| {
-                        let summary = subtask.summary.as_deref().unwrap_or("No summary");
-                        let issue_type = subtask.issue_type.as_deref().unwrap_or("Unknown");
-
-                        Line::from(vec![
-                            Span::styled(
-                                format!("{}. ", index + 1),
-                                Style::default().fg(Color::Cyan),
-                            ),
-                            Span::styled(
-                                format!("{} ", subtask.key),
-                                Style::default().fg(Color::Blue),
-                            ),
-                            Span::styled(
-                                format!("[{}] ", issue_type),
-                                Style::default().fg(Color::Green),
-                            ),
-                            Span::styled(summary, Style::default().fg(Color::White)),
-                        ])
+                    .map(|subtask| {
+                        self.issue_renderer.render_issue_ref(
+                            subtask,
+                            IssueItemMode::Full,
+                            main_chunks[2].width,
+                        )
                     })
-                    .collect()
-            };
+                    .collect();
 
-            let style = if self.focused && self.selected_field == DetailField::Subtasks {
-                Style::default().bg(Color::DarkGray)
-            } else {
-                Style::default()
-            };
+                let highlight_style =
+                    if self.focused && self.selected_field == DetailField::Subtasks {
+                        Style::default().bg(Color::Yellow)
+                    } else {
+                        Style::default()
+                    };
 
-            let subtasks_paragraph = Paragraph::new(subtasks_lines)
-                .wrap(Wrap { trim: true })
-                .style(style);
+                let subtasks_list = List::new(subtasks_items).highlight_style(highlight_style);
 
-            f.render_widget(subtasks_paragraph, main_chunks[2]);
+                f.render_widget(subtasks_list, main_chunks[2]);
+            }
         }
     }
 

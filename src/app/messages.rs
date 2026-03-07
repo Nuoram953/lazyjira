@@ -10,7 +10,7 @@ pub enum AppMessage {
         append: bool,
     },
     ItemDetailLoaded {
-        item: JiraIssue,
+        item: Box<JiraIssue>,
         key: String,
     },
     ItemsSorted {
