@@ -9,11 +9,19 @@ use ratatui::widgets::ListState;
 use std::time::Instant;
 use tokio::sync::mpsc::UnboundedSender;
 
+#[derive(Debug, Default)]
+pub struct HelpState {
+    pub selected_index: usize,
+    pub scroll_offset: usize,
+}
+
 pub struct App {
     pub detail_view: IssueDetail,
     pub items_sprint: IssueList,
     pub items_recently_updated: IssueList,
     pub items_backlog: IssueList,
+    pub show_help: bool,
+    pub help_state: HelpState,
     pub navigator: Navigator,
     pub client: JiraClient,
     pub search_mode: bool,
@@ -63,6 +71,8 @@ impl App {
             tx,
             detail_fetch_timer: None,
             pending_detail_key: None,
+            show_help: false,
+            help_state: HelpState::default(),
         }
     }
 

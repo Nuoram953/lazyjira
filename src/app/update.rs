@@ -50,6 +50,27 @@ impl App {
                     }
                 }
 
+                if self.show_help {
+                    match key.code {
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            if self.help_state.selected_index > 0 {
+                                self.help_state.selected_index -= 1;
+                                self.update_help_scroll();
+                            }
+                            return None;
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            let total_items = GLOBAL_KEYBINDS.len() + DETAIL_KEYBINDS.len();
+                            if self.help_state.selected_index < total_items.saturating_sub(1) {
+                                self.help_state.selected_index += 1;
+                                self.update_help_scroll();
+                            }
+                            return None;
+                        }
+                        _ => {}
+                    }
+                }
+
                 if let Some(bind) = GLOBAL_KEYBINDS.iter().find(|b| b.key == key.code) {
                     match bind.action {
                         GlobalAction::Quit => return Some(AppAction::Quit),
@@ -125,6 +146,13 @@ impl App {
                                     }
                                     ListAction::SelectionChanged => {}
                                 }
+                            }
+                        }
+                        GlobalAction::Help => {
+                            self.show_help = !self.show_help;
+                            if self.show_help {
+                                self.help_state.selected_index = 0;
+                                self.help_state.scroll_offset = 0;
                             }
                         }
                     }
@@ -391,6 +419,20 @@ impl App {
 
                 self.fetch_detail_issue();
             }
+        }
+    }
+
+    fn update_help_scroll(&mut self) {
+        let lines_per_item = 3;
+        let selected_line = self.help_state.selected_index * lines_per_item;
+
+        let visible_lines = 10;
+
+        if selected_line < self.help_state.scroll_offset {
+            self.help_state.scroll_offset = selected_line;
+        } else if selected_line >= self.help_state.scroll_offset + visible_lines {
+            self.help_state.scroll_offset =
+                selected_line.saturating_sub(visible_lines - lines_per_item);
         }
     }
 }
