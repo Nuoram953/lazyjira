@@ -135,7 +135,7 @@ impl IssueDetail {
                 .add_modifier(ratatui::style::Modifier::BOLD)
         } else {
             Style::default()
-                .fg(Color::Yellow)
+                .fg(Color::Cyan)
                 .add_modifier(ratatui::style::Modifier::BOLD)
         };
         Line::from(vec![Span::styled(format!(" {} ", title), style)])
@@ -155,7 +155,7 @@ impl IssueDetail {
 
         f.render_widget(Paragraph::new(title), main_chunks[0]);
 
-        let line_color = Color::Yellow;
+        let line_color = Color::Cyan;
 
         let separator = Line::from(vec![Span::styled(
             "─".repeat(area.width as usize),
@@ -207,7 +207,7 @@ impl IssueDetail {
 
         f.render_widget(Paragraph::new(title), main_chunks[0]);
 
-        let line_color = Color::Yellow;
+        let line_color = Color::Cyan;
 
         let separator = Line::from(vec![Span::styled(
             "─".repeat(area.width as usize),
@@ -292,7 +292,7 @@ impl IssueDetail {
 
         f.render_widget(Paragraph::new(title), main_chunks[0]);
 
-        let line_color = Color::Yellow;
+        let line_color = Color::Cyan;
 
         let separator = Line::from(vec![Span::styled(
             "─".repeat(area.width as usize),
@@ -343,7 +343,7 @@ impl IssueDetail {
 
         f.render_widget(Paragraph::new(title), main_chunks[0]);
 
-        let line_color = Color::Yellow;
+        let line_color = Color::Cyan;
 
         let separator = Line::from(vec![Span::styled(
             "─".repeat(area.width as usize),

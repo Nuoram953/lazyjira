@@ -1,5 +1,5 @@
 mod actions;
-mod keybinds;
+pub mod keybinds;
 pub mod messages;
 pub mod navigator;
 pub mod state;
