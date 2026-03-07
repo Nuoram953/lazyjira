@@ -197,7 +197,7 @@ impl App {
             }
             AppMessage::ItemDetailLoaded { item, key } => {
                 if self.pending_detail_key.as_ref() == Some(&key) {
-                    self.detail_view.set_issue(Some(item));
+                    self.detail_view.set_issue(Some(*item));
                     self.pending_detail_key = None;
                     self.detail_fetch_timer = None;
                 }
@@ -231,7 +231,7 @@ impl App {
                     match result {
                         Ok(item) => {
                             let _ = tx.send(AppMessage::ItemDetailLoaded {
-                                item,
+                                item: Box::new(item),
                                 key: pending_key,
                             });
                         }
@@ -275,7 +275,7 @@ impl App {
         crate::services::types::Paginated<crate::services::types::JiraIssue>,
         Box<dyn std::error::Error + Send + Sync>,
     > {
-        let sort_mode = sort.unwrap_or_else(|| match list {
+        let sort_mode = sort.unwrap_or(match list {
             ActiveList::Sprint => crate::services::sort::SortMode::PriorityDesc,
             ActiveList::RecentlyUpdated => crate::services::sort::SortMode::UpdatedDesc,
             ActiveList::Backlog => crate::services::sort::SortMode::KeyDesc,

@@ -15,6 +15,8 @@ fn create_test_issue(key: &str, summary: &str) -> JiraIssue {
         created: Utc::now(),
         updated: Utc::now(),
         issue_type: "Story".to_string(),
+        parent: None,
+        subtasks: vec![],
     }
 }
 
@@ -30,6 +32,8 @@ fn create_test_issue_with_time(key: &str, summary: &str, updated: DateTime<Utc>)
         created: updated,
         updated,
         issue_type: "Story".to_string(),
+        parent: None,
+        subtasks: vec![],
     }
 }
 

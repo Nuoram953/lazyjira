@@ -6,12 +6,15 @@ use ratatui::{
     Frame,
 };
 
-use crate::services::{
-    sort::SortMode,
-    types::{JiraIssue, Paginated},
+use crate::{
+    services::{
+        sort::SortMode,
+        types::{JiraIssue, Paginated},
+    },
+    ui::components::{IssueItemMode, IssueItemRenderer},
 };
 
-mod icons;
+pub mod icons;
 mod navigation;
 mod spinner;
 mod tabs;
@@ -19,7 +22,6 @@ mod tabs;
 pub use navigation::{ListAction, ListNavigator};
 pub use tabs::{JqlTab, TabAction, TabBar};
 
-use icons::PriorityIcons;
 use spinner::LoadingSpinner;
 
 pub struct IssueList {
@@ -32,9 +34,9 @@ pub struct IssueList {
     pub tabs_enabled: bool,
 
     navigator: ListNavigator,
-    priority_icons: PriorityIcons,
     spinner: LoadingSpinner,
     tab_bar: TabBar,
+    issue_renderer: IssueItemRenderer,
 }
 
 impl IssueList {
@@ -46,11 +48,11 @@ impl IssueList {
             sort_mode,
             is_loading: false,
             navigator: ListNavigator::new(),
-            priority_icons: PriorityIcons::new(),
             spinner: LoadingSpinner::new(),
             summary_mode,
             tabs_enabled: false,
             tab_bar: TabBar::new(),
+            issue_renderer: IssueItemRenderer::new(),
         }
     }
 
@@ -88,50 +90,12 @@ impl IssueList {
             .items
             .iter()
             .map(|issue| {
-                let icon = self.priority_icons.get_icon(issue.priority.as_ref());
-
-                let key_part = format!("[{}] ", issue.key);
-
-                let available_width = area.width.saturating_sub(3) as usize;
-
-                let summary_max = available_width.saturating_sub(key_part.chars().count());
-
-                let truncated_summary = if issue.summary.chars().count() > summary_max {
-                    let mut s = issue
-                        .summary
-                        .chars()
-                        .take(summary_max.saturating_sub(1))
-                        .collect::<String>();
-                    s.push('…');
-                    s
+                let mode = if self.summary_mode {
+                    IssueItemMode::Summary
                 } else {
-                    issue.summary.clone()
+                    IssueItemMode::Full
                 };
-
-                let mut lines = vec![Line::from(vec![
-                    Span::styled(key_part, Style::default().add_modifier(Modifier::BOLD)),
-                    Span::styled(
-                        truncated_summary,
-                        Style::default().add_modifier(Modifier::BOLD),
-                    ),
-                ])];
-
-                if !self.summary_mode {
-                    lines.push(Line::from(vec![Span::styled(
-                        format!(
-                            "{} | {} | {} {} | {}",
-                            issue.issue_type,
-                            issue.status,
-                            icon,
-                            issue.priority.as_deref().unwrap_or("N/A"),
-                            issue.assignee.as_deref().unwrap_or("N/A")
-                        ),
-                        Style::default().add_modifier(Modifier::DIM),
-                    )]));
-                    lines.push(Line::from(""));
-                }
-
-                ListItem::new(lines)
+                self.issue_renderer.render_issue(issue, mode, area.width)
             })
             .collect();
 

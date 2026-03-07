@@ -61,6 +61,8 @@ fn test_jira_issue_from_api() {
             issuetype: JiraIssueType {
                 name: "Story".to_string(),
             },
+            parent: None,
+            subtasks: None,
         },
     };
 
@@ -107,6 +109,8 @@ fn test_jira_issue_from_api_with_none_values() {
             issuetype: JiraIssueType {
                 name: "Bug".to_string(),
             },
+            parent: None,
+            subtasks: None,
         },
     };
 
@@ -138,8 +142,10 @@ fn test_jira_issue_from_api_invalid_dates() {
             created: "invalid-date".to_string(),
             updated: "also-invalid".to_string(),
             issuetype: JiraIssueType {
-                name: "Bug".to_string(),
+                name: "Task".to_string(),
             },
+            parent: None,
+            subtasks: None,
         },
     };
 
@@ -285,6 +291,8 @@ fn test_issue_serialization() {
         created: Utc.with_ymd_and_hms(2023, 1, 15, 10, 0, 0).unwrap(),
         updated: Utc.with_ymd_and_hms(2023, 1, 16, 15, 30, 0).unwrap(),
         issue_type: "Story".to_string(),
+        parent: None,
+        subtasks: vec![],
     };
 
     let serialized = serde_json::to_value(&issue).unwrap();

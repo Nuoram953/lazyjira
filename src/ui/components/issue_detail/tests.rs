@@ -1,5 +1,5 @@
 use super::*;
-use crate::services::types::JiraIssue;
+use crate::services::types::{JiraIssue, JiraIssueRef};
 use chrono::{DateTime, Utc};
 use ratatui::{backend::TestBackend, layout::Rect, Terminal};
 use serde_json::json;
@@ -33,6 +33,19 @@ fn create_test_issue() -> JiraIssue {
             .unwrap()
             .with_timezone(&Utc),
         issue_type: "Bug".to_string(),
+        parent: None,
+        subtasks: vec![
+            JiraIssueRef {
+                key: "TEST-124".to_string(),
+                summary: Some("Subtask 1".to_string()),
+                issue_type: Some("Sub-task".to_string()),
+            },
+            JiraIssueRef {
+                key: "TEST-125".to_string(),
+                summary: Some("Subtask 2".to_string()),
+                issue_type: Some("Sub-task".to_string()),
+            },
+        ],
     }
 }
 

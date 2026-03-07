@@ -112,7 +112,7 @@ mod tests {
         ]);
 
         let result = extract_text_from_adf(&adf_content);
-        assert_eq!(result, "First paragraph.\nSecond paragraph.");
+        assert_eq!(result, "First paragraph.\n\nSecond paragraph.");
     }
 
     #[test]
